@@ -99,7 +99,7 @@ pnpm --filter @at/web e2e             # Playwright against the local stack (star
 
 1. **Foundation** ✅: monorepo, schema + RLS + seed, auth (magic link + Google), hunts, invite links, deploy workflows
 2. **Ingest v1** ✅: paste link → `ingest-listing` → Otodom / OLX / generic parsers, listing detail + edit, add from text + photos
-3. Deciding: swipe deck, stars, matches, disagreements, reconsider, realtime toasts
+3. **Deciding** ✅: swipe deck, stars, matches, disagreements, reconsider, realtime toasts
 4. Organize: list / sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
 5. Map & pins: geocoding, map, distance to pins, compare
 6. Mobile capture: PWA install, share target, Web Push

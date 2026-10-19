@@ -4,13 +4,17 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHuntsStore } from '@/stores/hunts'
 import { useListingsStore } from '@/stores/listings'
+import { useVotesStore } from '@/stores/votes'
+import MatchToast from '@/components/MatchToast.vue'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const huntsStore = useHuntsStore()
 const listingsStore = useListingsStore()
-const showAdd = computed(() => route.name === 'deck' || route.name === 'list')
+const votesStore = useVotesStore()
+// The swipe screen has its own add button next to the swipe controls.
+const showAdd = computed(() => route.name === 'list')
 const error = ref<string | null>(null)
 
 const tabs = [
@@ -30,7 +34,7 @@ watch(
       const hunt = await huntsStore.openHunt(id)
       // Not a member (or the hunt is gone): back to the list.
       if (!hunt) await router.replace({ name: 'hunts' })
-      else await listingsStore.open(id)
+      else await Promise.all([listingsStore.open(id), votesStore.open(id)])
     } catch (e) {
       error.value = (e as Error).message
     }
@@ -38,11 +42,15 @@ watch(
   { immediate: true },
 )
 
-onBeforeUnmount(() => listingsStore.close())
+onBeforeUnmount(() => {
+  listingsStore.close()
+  votesStore.close()
+})
 </script>
 
 <template>
   <div class="flex min-h-dvh flex-col">
+    <MatchToast />
     <header
       class="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur"
     >
@@ -76,6 +84,7 @@ onBeforeUnmount(() => listingsStore.close())
             :to="{ name: tab.name, params: { huntId: route.params.huntId } }"
             class="flex flex-col items-center gap-0.5 py-2 text-xs text-slate-500"
             active-class="!text-brand-700 font-semibold"
+            :class="{ '!text-brand-700 font-semibold': route.meta.tab === tab.name }"
           >
             <span class="text-lg" aria-hidden="true">{{ tab.icon }}</span>
             {{ t(`nav.${tab.name}`) }}

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { costPerM2, formatArea, formatPLN, type ListingFeatures } from '@at/shared'
 import { supabase, type Tables } from '@/lib/supabase'
 import { listingTotal, SOURCE_LABELS, sortedPhotos, type ListingWithPhotos } from '@/lib/listings'
 import { useListingsStore } from '@/stores/listings'
+import { useVotesStore } from '@/stores/votes'
 import ListingImage from '@/components/ListingImage.vue'
+import ListingVotes from '@/components/ListingVotes.vue'
 
 type EventRow = Tables<'listing_events'> & { profiles: { display_name: string } | null }
 
@@ -14,10 +16,12 @@ const { t, d } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const listingsStore = useListingsStore()
+const votesStore = useVotesStore()
 
-const listing = ref<ListingWithPhotos | null>(null)
+// Ref<T> instead of ref<T>(): unwrapping the recursive Json columns trips TS2589.
+const listing = ref(null) as Ref<ListingWithPhotos | null>
 const history = ref<Tables<'listing_price_history'>[]>([])
-const events = ref<EventRow[]>([])
+const events = ref([]) as Ref<EventRow[]>
 const error = ref<string | null>(null)
 const loaded = ref(false)
 const showFullDescription = ref(false)
@@ -69,6 +73,11 @@ async function load() {
 }
 
 watch(listingId, load, { immediate: true })
+// Votes and reconsider requests add timeline events; reload when this listing's summary moves.
+watch(
+  () => JSON.stringify(votesStore.summaries[listingId.value] ?? null),
+  () => void load(),
+)
 
 const facts = computed(() => {
   const l = listing.value
@@ -119,14 +128,31 @@ async function remove() {
   await router.replace({ name: 'list', params: { huntId: huntId.value } })
 }
 
+// Star changes and undone votes would only clutter the timeline.
+const HIDDEN_EVENTS = ['rated', 'unvoted']
+const timeline = computed(() => events.value.filter((e) => !HIDDEN_EVENTS.includes(e.type)))
+
 function eventText(e: EventRow) {
   const who = e.profiles?.display_name ?? t('listing.someone')
-  const payload = (e.payload ?? {}) as { fields?: string[] }
-  return t(
+  const payload = (e.payload ?? {}) as {
+    fields?: string[]
+    swipe?: string
+    outcome?: string
+    target_name?: string
+    note?: string | null
+  }
+  const vote = payload.swipe ?? payload.outcome
+  const text = t(
     `events.${e.type}`,
-    { who, fields: payload.fields?.join(', ') ?? '' },
+    {
+      who,
+      fields: payload.fields?.join(', ') ?? '',
+      swipe: vote ? t(`votes.swipe.${vote}`) : '',
+      target: payload.target_name ?? t('listing.someone'),
+    },
     { default: `${who}: ${e.type}` },
   )
+  return payload.note ? `${text}: “${payload.note}”` : text
 }
 </script>
 
@@ -231,6 +257,8 @@ function eventText(e: EventRow) {
         </dl>
       </section>
 
+      <ListingVotes :listing-id="listingId" />
+
       <section v-if="facts.length" class="card">
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm" data-testid="facts">
           <template v-for="[label, value] in facts" :key="label">
@@ -280,10 +308,10 @@ function eventText(e: EventRow) {
         </ul>
       </section>
 
-      <section v-if="events.length" class="card">
+      <section v-if="timeline.length" class="card">
         <h3 class="mb-2 font-semibold">{{ t('listing.timeline') }}</h3>
         <ol class="space-y-2 text-sm">
-          <li v-for="e in events" :key="e.id" class="flex gap-3">
+          <li v-for="e in timeline" :key="e.id" class="flex gap-3">
             <span class="w-24 shrink-0 text-slate-500">{{
               d(new Date(e.created_at), 'short')
             }}</span>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
@@ -14,7 +14,8 @@ const auth = useAuthStore()
 const listingId = route.params.listingId as string
 const huntId = route.params.huntId as string
 
-const original = ref<Listing | null>(null)
+// Ref<T> instead of ref<T>(): unwrapping the recursive Json columns trips TS2589.
+const original = ref(null) as Ref<Listing | null>
 const draft = ref<ListingDraft | null>(null)
 const saving = ref(false)
 const error = ref<string | null>(null)

@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { IngestResponse, ListingWithPhotos } from '@/lib/listings'
 
 export const useListingsStore = defineStore('listings', () => {
   const huntId = ref<string | null>(null)
-  const listings = ref<ListingWithPhotos[]>([])
+  // Typed as Ref<T> rather than ref<T>() so Vue doesn't unwrap the recursive Json columns (TS2589).
+  const listings = ref([]) as Ref<ListingWithPhotos[]>
   const loading = ref(false)
   /** Result of the latest add, so the detail page can offer the duplicate prompt. */
   const lastIngest = ref<IngestResponse | null>(null)
@@ -55,5 +56,9 @@ export const useListingsStore = defineStore('listings', () => {
     huntId.value = null
   }
 
-  return { huntId, listings, loading, lastIngest, open, close, fetchAll }
+  function byId(id: string): ListingWithPhotos | null {
+    return listings.value.find((l) => l.id === id) ?? null
+  }
+
+  return { huntId, listings, loading, lastIngest, open, close, fetchAll, byId }
 })
