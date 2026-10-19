@@ -52,9 +52,22 @@ You need a GitHub account, a free [Supabase](https://supabase.com) account, and 
 8. **Deploy:** push to `main`, or run the *Deploy Supabase* and *Deploy web* workflows by hand from the Actions tab. The app goes live at `https://<user>.github.io/<repo>/`.
 9. **Optional, Google sign-in:** create an OAuth client in Google Cloud and enable the Google provider under Authentication → Providers. Then set the `VITE_GOOGLE_AUTH=true` variable.
 10. **Optional, geocoding contact:** the `geocode` function looks addresses up on OpenStreetMap's Nominatim (cached, at most one request a second). Its usage policy asks for a contact address: `supabase secrets set NOMINATIM_EMAIL=you@example.com`.
-11. **Web Push (milestone 6):** generate VAPID keys with `npx web-push generate-vapid-keys` and store them with `supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`.
+11. **Web Push.** Without these steps the in-app notification feed (the 🔔) still works; only push to phones and desktops is off.
+    1. Generate VAPID keys once: `npx web-push generate-vapid-keys`. Store them as function secrets, with a contact for push services, and pick a random shared secret for the database → function call:
+       ```sh
+       supabase secrets set VAPID_PUBLIC_KEY=<public> VAPID_PRIVATE_KEY=<private> \
+         VAPID_SUBJECT=mailto:you@example.com PUSH_WEBHOOK_SECRET=$(openssl rand -hex 32)
+       ```
+    2. Add the **public** key as the `VITE_VAPID_PUBLIC_KEY` repo variable (or secret) so the web build can subscribe browsers. The private key never goes into a `VITE_` variable.
+    3. Tell the database where `send-push` lives. A trigger on `listing_events` calls it with `pg_net`, reading the URL and the shared secret from Supabase Vault. In the SQL editor:
+       ```sql
+       select vault.create_secret('https://<ref>.supabase.co/functions/v1/send-push', 'send_push_url');
+       select vault.create_secret('<same value as PUSH_WEBHOOK_SECRET>', 'push_webhook_secret');
+       ```
+       To change one later: `select vault.update_secret((select id from vault.secrets where name = 'send_push_url'), '<new value>');`
+    4. Each person turns push on per device under **Account → Notifications**. On iPhone/iPad, push only works once the app is added to the home screen (iOS 16.4+).
 
-11. **Sign-in codes:** the browser extension signs in with the one-time code from the sign-in email, so the email must contain it. In Supabase, go to **Authentication → Email Templates → Magic Link** and paste `supabase/templates/magic_link.html`, or add `{{ .Token }}` to your own template. The local stack already uses this template (see `config.toml`). The web app accepts the code too ("Have a code? Enter it"), which helps when an installed PWA's link opens in another browser.
+12. **Sign-in codes:** the browser extension signs in with the one-time code from the sign-in email, so the email must contain it. In Supabase, go to **Authentication → Email Templates → Magic Link** and paste `supabase/templates/magic_link.html`, or add `{{ .Token }}` to your own template. The local stack already uses this template (see `config.toml`). The web app accepts the code too ("Have a code? Enter it"), which helps when an installed PWA's link opens in another browser.
 
 ### Who can sign up
 
@@ -106,7 +119,7 @@ pnpm dev                              # http://localhost:5173
 - Sign-in emails land in **Mailpit** at http://127.0.0.1:54324.
 - The seed creates the example hunt *Warsaw flat 2026* (3 rooms, private landlords only, near SKM Służewiec / the S2–S3 line) shared by `ala@example.com` and `bartek@example.com`.
 - `pnpm db:reset` re-applies migrations and the seed. `pnpm db:types` regenerates `packages/shared/src/database.ts` after a schema change.
-- Edge functions: `cp supabase/functions/.env.example supabase/functions/.env`, then `pnpm functions:serve`. Function logic lives in `packages/edge` and is bundled (with the parsers, zod and supabase-js) into `supabase/functions/_shared/edge.js` by `pnpm build:functions`; the deploy workflow does this before `supabase functions deploy`.
+- Edge functions: `cp supabase/functions/.env.example supabase/functions/.env`, then `pnpm functions:serve`. For Web Push locally, generate VAPID keys (`npx web-push generate-vapid-keys`), put them in `supabase/functions/.env` and the public one in `apps/web/.env.local` as `VITE_VAPID_PUBLIC_KEY`. The seed already stores the Vault secrets that point the notification trigger at the local `send-push` (`http://kong:8000/…`, as seen from the db container). Push needs the service worker, which only the built app has: `pnpm build && pnpm --filter @at/web preview`. Function logic lives in `packages/edge` and is bundled (with the parsers, zod and supabase-js) into `supabase/functions/_shared/edge.js` by `pnpm build:functions`; the deploy workflow does this before `supabase functions deploy`.
 
 ### Tests
 
@@ -115,6 +128,14 @@ pnpm test                             # unit + fixture tests; edge function inte
 pnpm db:test                          # pgTAP: RLS, deck, re-check bookkeeping, duplicate merge
 pnpm --filter @at/web e2e             # Playwright against the local stack (starts dev server + functions)
 ```
+
+## Phone: install, share, notifications
+
+- **Install:** Chrome on Android and desktop offers *Install app* (on the hunts list and the account page). On iPhone, use Share → *Add to Home Screen*.
+- **Share a listing:** once installed on Android, ApartmentTogether appears in the share sheet of Otodom, OLX and the browser. The share opens `#/add`: pick the hunt (the last one you opened is preselected; with one hunt there's nothing to pick) and the add flow opens with the link filled in. Apps that put the link inside the shared text work too. Signed out? Sign in and you land back in the add flow.
+- **Notifications:** new matches, listings a partner added, reconsider requests aimed at you, status changes, ads taken down and price drops. They show up under the 🔔 (live) and, if you turn push on for a device, as system notifications. You never get notified about your own actions. Each kind can be switched off under Account → Notifications.
+
+How it works: every notification starts as a `listing_events` row. The `listing_events_notify` trigger (`supabase/migrations/20261024000000_notifications.sql`) writes one `notifications` row per recipient and posts their ids to the `send-push` function with `pg_net`. `send-push` (`packages/edge/src/push.ts`) loads the recipients' `push_subscriptions` and sends Web Push (RFC 8291 encryption and VAPID with WebCrypto, `packages/edge/src/webpush.ts`). Subscriptions the push service has forgotten (404/410) are deleted. The service worker (`apps/web/src/sw.ts`, built with vite-plugin-pwa's `injectManifest`) shows the notification and opens the right screen when it's tapped.
 
 ## Browser extension
 
@@ -153,7 +174,7 @@ The build-time defaults are `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `V
 2. **Ingest v1** ✅: paste link → `ingest-listing` → Otodom / OLX / generic parsers, listing detail + edit, add from text + photos
 3. **Deciding** ✅: swipe deck, stars, matches, disagreements, reconsider, realtime toasts
 4. **Organize** ✅: list sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
-5. Map & pins: geocoding, map, distance to pins, compare
-6. Mobile capture: PWA install, share target, Web Push
+5. **Map & pins** ✅: geocoding, pins, map, distance to pins, compare
+6. **Mobile capture** ✅: PWA install, share target, Web Push, in-app notification feed
 7. **Extension** ✅: MV3 for Chrome + Firefox with shared parsers, hunt picker, code sign-in
 8. **Upkeep** ✅: daily liveness / price job with "Check now", price badges, remaining parsers (Gratka, Morizon, Nieruchomosci-online, Domiporta), duplicate merge

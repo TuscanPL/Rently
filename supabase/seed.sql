@@ -51,3 +51,9 @@ insert into public.pins (id, hunt_id, label, lat, lng, kind) values
    'SKM Rakowiec', 52.2003, 20.9775, 'station'),
   ('00000000-0000-4000-c000-000000000003', '00000000-0000-4000-b000-000000000001',
    'SKM Warszawa Zachodnia', 52.2196, 20.9654, 'station');
+
+-- Web Push: where the notification trigger sends new notifications (pg_net runs
+-- inside the db container, so the API gateway is `kong`), and the shared secret
+-- send-push checks. It must match PUSH_WEBHOOK_SECRET in supabase/functions/.env.
+select vault.create_secret('http://kong:8000/functions/v1/send-push', 'send_push_url');
+select vault.create_secret('local-push-secret', 'push_webhook_secret');

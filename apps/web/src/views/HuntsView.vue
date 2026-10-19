@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHuntsStore } from '@/stores/hunts'
 import { useAuthStore } from '@/stores/auth'
+import NotificationBell from '@/components/NotificationBell.vue'
+import InstallPrompt from '@/components/InstallPrompt.vue'
 
 const { t } = useI18n()
 const huntsStore = useHuntsStore()
@@ -26,14 +28,19 @@ onMounted(async () => {
   <main class="mx-auto max-w-lg px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">
     <header class="mb-6 flex items-center justify-between">
       <h1 class="text-2xl font-bold">{{ t('hunts.title') }}</h1>
-      <RouterLink
-        :to="{ name: 'account' }"
-        class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-800"
-        :aria-label="t('account.title')"
-      >
-        {{ auth.profile?.display_name.charAt(0).toUpperCase() ?? '?' }}
-      </RouterLink>
+      <div class="flex items-center gap-2">
+        <NotificationBell />
+        <RouterLink
+          :to="{ name: 'account' }"
+          class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-800"
+          :aria-label="t('account.title')"
+        >
+          {{ auth.profile?.display_name.charAt(0).toUpperCase() ?? '?' }}
+        </RouterLink>
+      </div>
     </header>
+
+    <InstallPrompt dismissible class="mb-4" />
 
     <p v-if="loading" class="text-slate-500">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="text-rose-700">{{ t('common.error', { message: error }) }}</p>

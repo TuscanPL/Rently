@@ -424,3 +424,7 @@ enabled = true
 # Called by the daily GitHub Action with a shared secret instead of a user JWT.
 [functions.refresh-listings]
 verify_jwt = false
+
+# Called by the database (pg_net, see 20261024000000_notifications.sql) with a shared secret.
+[functions.send-push]
+verify_jwt = false

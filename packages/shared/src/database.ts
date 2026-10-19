@@ -481,6 +481,117 @@ export type Database = {
           },
         ]
       }
+      notification_prefs: {
+        Row: {
+          ad_removed: boolean
+          listing_added: boolean
+          match: boolean
+          price_dropped: boolean
+          reconsider_request: boolean
+          status_changed: boolean
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          ad_removed?: boolean
+          listing_added?: boolean
+          match?: boolean
+          price_dropped?: boolean
+          reconsider_request?: boolean
+          status_changed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          ad_removed?: boolean
+          listing_added?: boolean
+          match?: boolean
+          price_dropped?: boolean
+          reconsider_request?: boolean
+          status_changed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notification_prefs_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          hunt_id: string
+          id: string
+          kind: Database['public']['Enums']['notification_kind']
+          listing_id: string | null
+          payload: NonNullable<Json>
+          pushed_at: string | null
+          read_at: string | null
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          hunt_id: string
+          id?: string
+          kind: Database['public']['Enums']['notification_kind']
+          listing_id?: string | null
+          payload?: NonNullable<Json>
+          pushed_at?: string | null
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          hunt_id?: string
+          id?: string
+          kind?: Database['public']['Enums']['notification_kind']
+          listing_id?: string | null
+          payload?: NonNullable<Json>
+          pushed_at?: string | null
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_event_id_fkey'
+            columns: ['event_id']
+            isOneToOne: false
+            referencedRelation: 'listing_events'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_hunt_id_fkey'
+            columns: ['hunt_id']
+            isOneToOne: false
+            referencedRelation: 'hunts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_listing_id_fkey'
+            columns: ['listing_id']
+            isOneToOne: false
+            referencedRelation: 'listings'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       pins: {
         Row: {
           hunt_id: string
@@ -538,6 +649,45 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'push_subscriptions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       reconsider_requests: {
         Row: {
@@ -762,12 +912,17 @@ export type Database = {
           still_no: boolean
         }[]
       }
+      read_vault_secret: { Args: { p_name: string }; Returns: string }
       record_listing_check: {
         Args: { p_admin_fee?: number; p_listing_id: string; p_rent?: number; p_result: string }
         Returns: string[]
       }
       redeem_invite: { Args: { p_token: string }; Returns: string }
       request_reconsider: { Args: { p_listing_id: string; p_note?: string }; Returns: Json }
+      save_push_subscription: {
+        Args: { p_auth: string; p_endpoint: string; p_p256dh: string; p_user_agent?: string }
+        Returns: string
+      }
       shares_hunt_with: { Args: { p_user_id: string }; Returns: boolean }
       storage_hunt_id: { Args: { p_name: string }; Returns: string }
       valid_viewing_ratings: { Args: { p: Json }; Returns: boolean }
@@ -787,6 +942,13 @@ export type Database = {
         | 'other'
       listing_status:
         'new' | 'contacted' | 'viewing_booked' | 'viewed' | 'applied' | 'won' | 'rejected' | 'gone'
+      notification_kind:
+        | 'match'
+        | 'listing_added'
+        | 'reconsider_request'
+        | 'status_changed'
+        | 'ad_removed'
+        | 'price_dropped'
       pin_kind: 'work' | 'station' | 'family' | 'other'
       swipe: 'yes' | 'maybe' | 'no'
     }
@@ -925,6 +1087,14 @@ export const Constants = {
         'won',
         'rejected',
         'gone',
+      ],
+      notification_kind: [
+        'match',
+        'listing_added',
+        'reconsider_request',
+        'status_changed',
+        'ad_removed',
+        'price_dropped',
       ],
       pin_kind: ['work', 'station', 'family', 'other'],
       swipe: ['yes', 'maybe', 'no'],

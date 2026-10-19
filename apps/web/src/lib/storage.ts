@@ -18,3 +18,4 @@ export function writeLocal(key: string, value: string | null): void {
 
 export const LAST_HUNT_KEY = 'at.lastHunt'
 export const POST_LOGIN_KEY = 'at.postLogin'
+export const INSTALL_DISMISSED_KEY = 'at.installDismissed'

@@ -3,6 +3,8 @@ import { ref, watchEffect } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import NotificationSettings from '@/components/NotificationSettings.vue'
+import InstallPrompt from '@/components/InstallPrompt.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -61,6 +63,8 @@ async function signOut() {
       </button>
       <p v-if="error" class="text-sm text-rose-700" role="alert">{{ error }}</p>
     </form>
+    <NotificationSettings class="mt-8" />
+    <InstallPrompt class="mt-8" />
     <button type="button" class="btn-secondary mt-8 w-full" @click="signOut">
       {{ t('auth.signOut') }}
     </button>

@@ -1,9 +1,13 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { LAST_HUNT_KEY, POST_LOGIN_KEY, readLocal, writeLocal } from '@/lib/storage'
+import { adoptShareParams } from '@/lib/share'
 
 // Hash routing: GitHub Pages has no SPA rewrites, so deep links, magic-link
-// redirects and the share target all live after the "#".
+// redirects and the share target all live after the "#". Shared links arrive
+// as "<base>?url=…#/add"; move them into the route before the router reads it.
+adoptShareParams()
+
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
@@ -31,6 +35,17 @@ export const router = createRouter({
     { path: '/hunts/new', name: 'new-hunt', component: () => import('@/views/NewHuntView.vue') },
     { path: '/account', name: 'account', component: () => import('@/views/AccountView.vue') },
     { path: '/join/:token', name: 'join', component: () => import('@/views/JoinView.vue') },
+    {
+      // The share target, or "add from anywhere": ?url / text / title, then pick a hunt.
+      path: '/add',
+      name: 'share',
+      component: () => import('@/views/ShareView.vue'),
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('@/views/NotificationsView.vue'),
+    },
     {
       path: '/h/:huntId',
       component: () => import('@/views/HuntLayout.vue'),
