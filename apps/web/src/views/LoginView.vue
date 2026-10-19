@@ -38,6 +38,24 @@ async function sendLink() {
   }
 }
 
+// The email also has a code: for an installed PWA, the link may open in another browser.
+const enteringCode = ref(false)
+const code = ref('')
+
+async function submitCode() {
+  sending.value = true
+  error.value = null
+  try {
+    await auth.verifyCode(email.value.trim(), code.value)
+    // Already on the login route, so the session watcher's replace({ name: 'login' }) is a no-op.
+    await router.replace('/')
+  } catch (e) {
+    error.value = (e as Error).message
+  } finally {
+    sending.value = false
+  }
+}
+
 async function google() {
   error.value = null
   try {
@@ -63,6 +81,30 @@ async function google() {
     <div v-if="sent" class="card text-center" data-testid="link-sent">
       <p class="text-4xl">📬</p>
       <p class="mt-2">{{ t('auth.linkSent') }}</p>
+      <form v-if="enteringCode" class="mt-4 space-y-3 text-left" @submit.prevent="submitCode">
+        <div>
+          <label class="label" for="code">{{ t('auth.code') }}</label>
+          <input
+            id="code"
+            v-model="code"
+            required
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            class="input tracking-widest"
+          />
+        </div>
+        <button type="submit" class="btn-primary w-full" :disabled="sending">
+          {{ sending ? t('auth.verifying') : t('auth.verifyCode') }}
+        </button>
+      </form>
+      <button
+        v-else
+        type="button"
+        class="mt-3 text-sm font-medium text-brand-700 hover:underline"
+        @click="enteringCode = true"
+      >
+        {{ t('auth.haveCode') }}
+      </button>
     </div>
 
     <form v-else class="space-y-4" @submit.prevent="sendLink">
