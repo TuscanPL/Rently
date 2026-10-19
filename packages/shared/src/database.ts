@@ -644,6 +644,26 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      hunt_listing_summaries: {
+        Args: { p_hunt_id: string }
+        Returns: {
+          combined_score: number
+          criteria_violations: Json
+          is_disagreement: boolean
+          is_match: boolean
+          is_maybe: boolean
+          listing_id: string
+          member_count: number
+          member_votes: Json
+          my_stars: number
+          my_swipe: Database['public']['Enums']['swipe']
+          reconsider_pending: boolean
+          still_no: boolean
+          total_monthly: number
+          voted_count: number
+          votes_revealed: boolean
+        }[]
+      }
       invite_preview: {
         Args: { p_token: string }
         Returns: {
@@ -669,7 +689,21 @@ export type Database = {
           url: string
         }[]
       }
+      next_deck_cards: {
+        Args: { p_hunt_id: string; p_limit?: number }
+        Returns: {
+          deck_group: number
+          listing_id: string
+          reconsider_note: string
+          reconsider_pending: boolean
+          reconsider_request_id: string
+          reconsider_requested_by: string
+          rejected_by: string[]
+          still_no: boolean
+        }[]
+      }
       redeem_invite: { Args: { p_token: string }; Returns: string }
+      request_reconsider: { Args: { p_listing_id: string; p_note?: string }; Returns: Json }
       shares_hunt_with: { Args: { p_user_id: string }; Returns: boolean }
       storage_hunt_id: { Args: { p_name: string }; Returns: string }
     }
