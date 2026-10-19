@@ -3,7 +3,7 @@ name: Deploy Supabase
 on:
   push:
     branches: [main]
-    paths: ['supabase/**', '.github/workflows/deploy-supabase.yml']
+    paths: ['supabase/**', 'packages/**', 'pnpm-lock.yaml', '.github/workflows/deploy-supabase.yml']
   workflow_dispatch:
 
 concurrency:
@@ -19,6 +19,14 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Bundles packages/edge (parsers, zod, supabase-js) into supabase/functions/_shared/edge.js.
+      - run: pnpm build:functions
       - uses: supabase/setup-cli@v1
         with:
           version: latest

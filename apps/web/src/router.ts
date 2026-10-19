@@ -42,11 +42,17 @@ export const router = createRouter({
           component: () => import('@/views/PlaceholderView.vue'),
           props: { section: 'deck' },
         },
+        { path: 'list', name: 'list', component: () => import('@/views/ListView.vue') },
+        { path: 'add', name: 'add', component: () => import('@/views/AddListingView.vue') },
         {
-          path: 'list',
-          name: 'list',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { section: 'list' },
+          path: 'l/:listingId',
+          name: 'listing',
+          component: () => import('@/views/ListingDetailView.vue'),
+        },
+        {
+          path: 'l/:listingId/edit',
+          name: 'listing-edit',
+          component: () => import('@/views/ListingEditView.vue'),
         },
         {
           path: 'map',

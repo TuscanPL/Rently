@@ -11,6 +11,7 @@ apps/web            Vue 3 + Vite PWA (hash routing, Pinia, Tailwind, vue-i18n)
 apps/extension      MV3 browser extension (milestone 7)
 packages/parsers    site adapters, shared by the edge function and the extension
 packages/shared     enums, zod schemas, cost helpers, generated DB types
+packages/edge       edge function logic (typed + tested in Node), bundled for Deno
 supabase/           migrations, seed, pgTAP tests, edge functions
 .github/workflows   CI, Pages deploy, Supabase deploy, daily refresh
 ```
@@ -84,20 +85,20 @@ pnpm dev                              # http://localhost:5173
 - Sign-in emails land in **Mailpit** at http://127.0.0.1:54324.
 - The seed creates the example hunt *Warsaw flat 2026* (3 rooms, private landlords only, near SKM Służewiec / the S2–S3 line) shared by `ala@example.com` and `bartek@example.com`.
 - `pnpm db:reset` re-applies migrations and the seed. `pnpm db:types` regenerates `packages/shared/src/database.ts` after a schema change.
-- Edge functions: `cp supabase/functions/.env.example supabase/functions/.env && supabase functions serve --env-file supabase/functions/.env`.
+- Edge functions: `cp supabase/functions/.env.example supabase/functions/.env`, then `pnpm functions:serve`. Function logic lives in `packages/edge` and is bundled (with the parsers, zod and supabase-js) into `supabase/functions/_shared/edge.js` by `pnpm build:functions`; the deploy workflow does this before `supabase functions deploy`.
 
 ### Tests
 
 ```sh
-pnpm test                             # unit tests (shared helpers, parsers)
+pnpm test                             # unit + fixture tests; ingest integration tests run when the local stack is up
 pnpm db:test                          # pgTAP: RLS keeps non-members out of every table
-pnpm --filter @at/web e2e             # Playwright against the local stack
+pnpm --filter @at/web e2e             # Playwright against the local stack (starts dev server + functions)
 ```
 
 ## Milestones
 
 1. **Foundation** ✅: monorepo, schema + RLS + seed, auth (magic link + Google), hunts, invite links, deploy workflows
-2. Ingest v1: paste link → `ingest-listing` → Otodom / OLX / generic parsers, manual add from text + photos
+2. **Ingest v1** ✅: paste link → `ingest-listing` → Otodom / OLX / generic parsers, listing detail + edit, add from text + photos
 3. Deciding: swipe deck, stars, matches, disagreements, reconsider, realtime toasts
 4. Organize: list / sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
 5. Map & pins: geocoding, map, distance to pins, compare

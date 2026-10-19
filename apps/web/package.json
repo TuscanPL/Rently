@@ -12,25 +12,27 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@at/parsers": "workspace:*",
     "@at/shared": "workspace:*",
     "@supabase/supabase-js": "^2.118.0",
+    "browser-image-compression": "^2.0.2",
     "pinia": "^4.1.0",
     "vue": "^3.5.44",
     "vue-i18n": "^11.4.16",
     "vue-router": "^5.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.0.0",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/tsconfig": "^0.9.1",
-    "@types/node": "^24.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "5.9.3",
     "vite": "^8.3.4",
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.0.5",
     "vue-tsc": "^3.3.13",
-    "workbox-window": "^7.4.1",
-    "@playwright/test": "1.56.1"
+    "workbox-window": "^7.4.1"
   }
 }

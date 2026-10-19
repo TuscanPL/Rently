@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHuntsStore } from '@/stores/hunts'
+import { useListingsStore } from '@/stores/listings'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const huntsStore = useHuntsStore()
+const listingsStore = useListingsStore()
+const showAdd = computed(() => route.name === 'deck' || route.name === 'list')
 const error = ref<string | null>(null)
 
 const tabs = [
@@ -27,12 +30,15 @@ watch(
       const hunt = await huntsStore.openHunt(id)
       // Not a member (or the hunt is gone): back to the list.
       if (!hunt) await router.replace({ name: 'hunts' })
+      else await listingsStore.open(id)
     } catch (e) {
       error.value = (e as Error).message
     }
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => listingsStore.close())
 </script>
 
 <template>
@@ -51,6 +57,15 @@ watch(
       <RouterView v-else-if="huntsStore.current" />
       <p v-else class="text-slate-500">{{ t('common.loading') }}</p>
     </main>
+
+    <RouterLink
+      v-if="showAdd && huntsStore.current"
+      :to="{ name: 'add', params: { huntId: route.params.huntId } }"
+      class="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex h-14 items-center gap-2 rounded-full bg-brand-700 px-5 text-base font-semibold text-white shadow-lg hover:bg-brand-800 md:bottom-6"
+      data-testid="add-button"
+    >
+      <span class="text-2xl leading-none">＋</span>{{ t('add.fab') }}
+    </RouterLink>
 
     <nav
       class="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:static md:order-first md:border-t-0 md:border-b"

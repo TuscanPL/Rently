@@ -2,16 +2,21 @@ import type { ParsedListing } from '@at/shared'
 
 export interface ParseResult {
   listing: ParsedListing
-  /** 0..1, how much of the important data the adapter found. */
+  /** 0..1, share of the important fields the adapter found. */
   confidence: number
   /** Important fields the adapter could not fill. */
-  missingFields: (keyof ParsedListing)[]
+  missingFields: ImportantField[]
+  /** Trimmed source subtree, stored in listings.raw for debugging. */
+  raw?: unknown
 }
+
+export const IMPORTANT_FIELDS = ['title', 'rent', 'areaM2', 'rooms', 'district', 'photos'] as const
+export type ImportantField = (typeof IMPORTANT_FIELDS)[number]
 
 /**
  * A site adapter. Adapters work on an HTML string so the same code runs in the
  * edge function (fetched HTML) and the extension (document.documentElement.outerHTML).
- * They must never throw on unexpected markup: return what was found instead.
+ * Throwing is allowed but discouraged: parseListingHtml catches it and falls back.
  */
 export interface SiteAdapter {
   name: string

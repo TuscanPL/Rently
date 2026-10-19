@@ -1,5 +1,8 @@
 {
-  "app": { "name": "ApartmentTogether", "tagline": "One shared list of every flat you're considering." },
+  "app": {
+    "name": "ApartmentTogether",
+    "tagline": "One shared list of every flat you're considering."
+  },
   "common": {
     "save": "Save",
     "saving": "Saving…",
@@ -49,7 +52,6 @@
   },
   "placeholder": {
     "deck": "Swipe through listings together. Arrives in milestone 3.",
-    "list": "Sort and filter every listing. Arrives in milestone 4.",
     "map": "Listings and pins on a map. Arrives in milestone 5.",
     "pipeline": "Track contact, viewings and applications. Arrives in milestone 4."
   },
@@ -84,5 +86,95 @@
     "invalid": "This invite link is invalid, expired or already used. Ask for a new one.",
     "already": "You're already in this hunt.",
     "open": "Open hunt"
+  },
+  "list": {
+    "empty": "No listings yet. Paste a link from Otodom, OLX or any other site to start."
+  },
+  "add": {
+    "title": "Add listing",
+    "fab": "Add",
+    "mode": {
+      "link": "Link",
+      "text": "Text + photos"
+    },
+    "urlLabel": "Listing link",
+    "urlHelp": "Otodom, OLX, Gratka, Morizon… or any other site.",
+    "paste": "Paste",
+    "addButton": "Add listing",
+    "fetching": "Fetching the listing…",
+    "textLabel": "Post text",
+    "textPlaceholder": "Paste the text of a Facebook post or any ad you can't link to.",
+    "photos": "Photos",
+    "addPhotos": "Add",
+    "removePhoto": "Remove photo",
+    "continue": "Continue",
+    "checkFields": "Check what we picked up from the text and fill in the rest.",
+    "save": "Save listing",
+    "uploading": "Uploading photo {n} of {total}…"
+  },
+  "form": {
+    "title": "Title",
+    "url": "Link (optional)",
+    "costs": "Monthly costs",
+    "rent": "Rent",
+    "adminFee": "Admin fee (czynsz adm.)",
+    "utilitiesEstimate": "Utilities (media)",
+    "deposit": "Deposit (kaucja)",
+    "totalMonthly": "Rent + fees per month",
+    "areaM2": "Area (m²)",
+    "rooms": "Rooms",
+    "floor": "Floor",
+    "totalFloors": "Floors in building",
+    "district": "District",
+    "address": "Address",
+    "availableFrom": "Available from",
+    "advertiserType": "Advertiser",
+    "private": "Private owner",
+    "agency": "Agency",
+    "unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No",
+    "features": "Features",
+    "description": "Description"
+  },
+  "features": {
+    "petsAllowed": "Pets allowed",
+    "furnished": "Furnished",
+    "balcony": "Balcony",
+    "elevator": "Elevator",
+    "parking": "Parking",
+    "yearBuilt": "Year built",
+    "heating": "Heating"
+  },
+  "listing": {
+    "untitled": "Untitled listing",
+    "roomsShort": "{n} room | {n} rooms",
+    "needsDetails": "Needs details",
+    "needsDetailsHelp": "We couldn't read everything from this ad. Add the missing details.",
+    "addDetails": "Add details",
+    "adRemoved": "Ad removed",
+    "adRemovedHelp": "The original ad is gone. This is the copy we saved.",
+    "totalMonthly": "Rent + fees per month (czynsz + opłaty)",
+    "perM2": "Per m²",
+    "openOriginal": "Open on {source}",
+    "edit": "Edit",
+    "editTitle": "Edit listing",
+    "delete": "Delete listing",
+    "deleteConfirm": "Delete this listing for everyone in the hunt?",
+    "priceHistory": "Price history",
+    "timeline": "History",
+    "someone": "Someone",
+    "notFound": "This listing doesn't exist or isn't in your hunt.",
+    "alreadyAdded": "This ad was already in the hunt, so here it is.",
+    "ok": "OK",
+    "duplicateOf": "Looks like a duplicate of",
+    "deleteThisOne": "Delete this one",
+    "keepBoth": "Keep both",
+    "showMore": "Show more",
+    "showLess": "Show less"
+  },
+  "events": {
+    "added": "{who} added it",
+    "edited": "{who} edited {fields}"
   }
 }

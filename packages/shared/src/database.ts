@@ -69,6 +69,22 @@ export type Database = {
           },
         ]
       }
+      domain_fetch_slots: {
+        Row: {
+          domain: string
+          next_slot_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          domain: string
+          next_slot_at?: string
+        }
+        Update: {
+          domain?: string
+          next_slot_at?: string
+        }
+        Relationships: []
+      }
       hunt_invites: {
         Row: {
           created_by: string
@@ -548,6 +564,22 @@ export type Database = {
           },
         ]
       }
+      signup_allowlist: {
+        Row: {
+          added_at: string
+          entry: string
+        }
+        ComputedFields: never
+        Insert: {
+          added_at?: string
+          entry: string
+        }
+        Update: {
+          added_at?: string
+          entry?: string
+        }
+        Relationships: []
+      }
       votes: {
         Row: {
           listing_id: string
@@ -593,6 +625,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_fetch_slot: { Args: { p_domain: string; p_interval_ms?: number }; Returns: number }
       create_hunt: {
         Args: { p_city?: string; p_criteria?: Json; p_name: string }
         Returns: {
@@ -625,6 +658,17 @@ export type Database = {
       is_hunt_member: { Args: { p_hunt_id: string }; Returns: boolean }
       is_hunt_owner: { Args: { p_hunt_id: string }; Returns: boolean }
       is_listing_member: { Args: { p_listing_id: string }; Returns: boolean }
+      listing_possible_duplicates: {
+        Args: { p_listing_id: string }
+        Returns: {
+          area_m2: number
+          district: string
+          id: string
+          rent: number
+          title: string
+          url: string
+        }[]
+      }
       redeem_invite: { Args: { p_token: string }; Returns: string }
       shares_hunt_with: { Args: { p_user_id: string }; Returns: boolean }
       storage_hunt_id: { Args: { p_name: string }; Returns: string }

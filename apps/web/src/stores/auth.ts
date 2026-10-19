@@ -7,7 +7,9 @@ import { i18n } from '@/i18n'
 // Sign-ups are limited by the signup_allowlist table; Auth reports a rejected
 // sign-up as a generic database error.
 export function describeAuthError(message: string): string {
-  return /database error saving new user/i.test(message) ? i18n.global.t('auth.notAllowed') : message
+  return /database error saving new user/i.test(message)
+    ? i18n.global.t('auth.notAllowed')
+    : message
 }
 
 export const useAuthStore = defineStore('auth', () => {
