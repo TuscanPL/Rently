@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, type Ref } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import type { ListingStatus } from '@at/shared'
 import type { IngestResponse, ListingWithPhotos } from '@/lib/listings'
 
 export const useListingsStore = defineStore('listings', () => {
@@ -60,5 +61,22 @@ export const useListingsStore = defineStore('listings', () => {
     return listings.value.find((l) => l.id === id) ?? null
   }
 
-  return { huntId, listings, loading, lastIngest, open, close, fetchAll, byId }
+  /**
+   * Moves a listing along the pipeline. A trigger logs the status_changed event.
+   * `viewingAt` (ISO) is only written when given; the old time stays otherwise.
+   */
+  async function setStatus(id: string, status: ListingStatus, viewingAt?: string | null) {
+    const patch = viewingAt === undefined ? { status } : { status, viewing_at: viewingAt }
+    const { data, error } = await supabase
+      .from('listings')
+      .update(patch)
+      .eq('id', id)
+      .select('*, listing_photos(*)')
+      .single()
+    if (error) throw error
+    listings.value = listings.value.map((l) => (l.id === id ? data : l))
+    return data
+  }
+
+  return { huntId, listings, loading, lastIngest, open, close, fetchAll, byId, setStatus }
 })

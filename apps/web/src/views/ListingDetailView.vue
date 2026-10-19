@@ -14,6 +14,9 @@ import PriceChangeBadge from '@/components/PriceChangeBadge.vue'
 import CheckNowButton from '@/components/CheckNowButton.vue'
 import { mergeListings } from '@/lib/upkeep'
 import { usePriceChangesStore } from '@/stores/priceChanges'
+import CriteriaBadges from '@/components/CriteriaBadges.vue'
+import ListingStatus from '@/components/ListingStatus.vue'
+import CommentThread from '@/components/CommentThread.vue'
 
 type EventRow = Tables<'listing_events'> & { profiles: { display_name: string } | null }
 
@@ -78,6 +81,13 @@ async function load() {
 }
 
 watch(listingId, load, { immediate: true })
+// A status change (here, in the pipeline or a partner's) lands in the listings store first.
+watch(
+  () => listingsStore.byId(listingId.value)?.updated_at,
+  (now, before) => {
+    if (before && now !== before) void load()
+  },
+)
 // Votes and reconsider requests add timeline events; reload when this listing's summary moves.
 watch(
   () => JSON.stringify(votesStore.summaries[listingId.value] ?? null),
@@ -153,9 +163,16 @@ async function mergeInto(dup: { id: string; title: string | null }) {
   }
 }
 
-// Star changes and undone votes would only clutter the timeline.
+// Star changes, undone votes and plain comments (the thread shows them) would
+// only clutter the timeline. Viewing notes stay as a milestone.
 const HIDDEN_EVENTS = ['rated', 'unvoted']
-const timeline = computed(() => events.value.filter((e) => !HIDDEN_EVENTS.includes(e.type)))
+const timeline = computed(() =>
+  events.value.filter(
+    (e) =>
+      !HIDDEN_EVENTS.includes(e.type) &&
+      !(e.type === 'commented' && (e.payload as { kind?: string })?.kind !== 'viewing_note'),
+  ),
+)
 
 function eventText(e: EventRow) {
   const who = e.profiles?.display_name ?? t('listing.someone')
@@ -168,10 +185,13 @@ function eventText(e: EventRow) {
     rent_after?: number | null
     admin_fee_after?: number | null
     dropped_title?: string | null
+    to?: string
+    viewing_at?: string
   }
   const vote = payload.swipe ?? payload.outcome
   const text = t(
-    `events.${e.type}`,
+    // The only commented events shown are viewing notes.
+    e.type === 'commented' ? 'events.viewing_note' : `events.${e.type}`,
     {
       who,
       fields: payload.fields?.join(', ') ?? '',
@@ -179,6 +199,8 @@ function eventText(e: EventRow) {
       target: payload.target_name ?? t('listing.someone'),
       price: formatPLN((payload.rent_after ?? 0) + (payload.admin_fee_after ?? 0)),
       dropped: payload.dropped_title ?? t('listing.untitled'),
+      to: payload.to ? t(`pipeline.status.${payload.to}`) : '',
+      date: payload.viewing_at ? d(new Date(payload.viewing_at), 'viewing') : '',
     },
     { default: `${who}: ${e.type}` },
   )
@@ -276,7 +298,12 @@ function eventText(e: EventRow) {
           {{ listing.address || listing.district }}
         </p>
         <PriceChangeBadge :hunt-id="huntId" :listing-id="listingId" class="mt-2" />
+        <div class="mt-2 flex flex-wrap gap-1.5 empty:hidden" data-testid="detail-criteria">
+          <CriteriaBadges :listing="listing" />
+        </div>
       </header>
+
+      <ListingStatus :listing="listing" />
 
       <section class="card" data-testid="costs">
         <p class="text-sm text-slate-500">{{ t('listing.totalMonthly') }}</p>
@@ -352,6 +379,8 @@ function eventText(e: EventRow) {
         </RouterLink>
         <CheckNowButton v-if="listing.url" :listing-id="listingId" @checked="onChecked" />
       </div>
+
+      <CommentThread :listing="listing" @note-added="load" />
 
       <section v-if="history.length > 1" class="card">
         <h3 class="mb-2 font-semibold">{{ t('listing.priceHistory') }}</h3>

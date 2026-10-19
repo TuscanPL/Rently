@@ -31,6 +31,7 @@ export type Database = {
           kind: Database['public']['Enums']['comment_kind']
           listing_id: string
           photo_paths: string[]
+          ratings: Json | null
           user_id: string
         }
         ComputedFields: never
@@ -41,6 +42,7 @@ export type Database = {
           kind?: Database['public']['Enums']['comment_kind']
           listing_id: string
           photo_paths?: string[]
+          ratings?: Json | null
           user_id?: string
         }
         Update: {
@@ -50,6 +52,7 @@ export type Database = {
           kind?: Database['public']['Enums']['comment_kind']
           listing_id?: string
           photo_paths?: string[]
+          ratings?: Json | null
           user_id?: string
         }
         Relationships: [
@@ -672,6 +675,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      haversine_km: {
+        Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
+        Returns: number
+      }
       hunt_listing_summaries: {
         Args: { p_hunt_id: string }
         Returns: {
@@ -706,6 +713,18 @@ export type Database = {
       is_hunt_member: { Args: { p_hunt_id: string }; Returns: boolean }
       is_hunt_owner: { Args: { p_hunt_id: string }; Returns: boolean }
       is_listing_member: { Args: { p_listing_id: string }; Returns: boolean }
+      jsonb_date: { Args: { p: Json }; Returns: string }
+      jsonb_number: { Args: { p: Json }; Returns: number }
+      listing_criteria_violations: {
+        Args: {
+          p_criteria: Json
+          p_listing: Omit<
+            Database['public']['Tables']['listings']['Row'],
+            Database['public']['Tables']['listings']['ComputedFields']
+          >
+        }
+        Returns: Json
+      }
       listing_possible_duplicates: {
         Args: { p_listing_id: string }
         Returns: {
@@ -751,6 +770,7 @@ export type Database = {
       request_reconsider: { Args: { p_listing_id: string; p_note?: string }; Returns: Json }
       shares_hunt_with: { Args: { p_user_id: string }; Returns: boolean }
       storage_hunt_id: { Args: { p_name: string }; Returns: string }
+      valid_viewing_ratings: { Args: { p: Json }; Returns: boolean }
     }
     Enums: {
       advertiser_type: 'private' | 'agency' | 'unknown'

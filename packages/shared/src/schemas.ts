@@ -3,25 +3,34 @@ import { ADVERTISER_TYPES, LISTING_SOURCES } from './enums.ts'
 
 const money = z.number().nonnegative()
 
-/** Per-hunt criteria, stored in `hunts.criteria`. Every field is optional. */
-export const huntCriteriaSchema = z.object({
-  maxTotalMonthly: money.optional(),
-  minRooms: z.number().int().positive().optional(),
-  minAreaM2: z.number().positive().optional(),
-  allowedDistricts: z.array(z.string()).optional(),
-  maxDistanceKm: z.number().positive().optional(),
-  /** Pin the distance limit is measured to. */
-  distancePinId: z.string().uuid().optional(),
-  privateOnly: z.boolean().optional(),
-  petsAllowed: z.boolean().optional(),
-  availableFrom: z.string().date().optional(),
-  availableTo: z.string().date().optional(),
-  parking: z.boolean().optional(),
-  balcony: z.boolean().optional(),
-  /** Require an elevator when the flat is above this floor. */
-  elevatorAboveFloor: z.number().int().nonnegative().optional(),
-  notes: z.string().optional(),
-})
+/**
+ * Per-hunt criteria, stored in `hunts.criteria`. Every field is optional. The
+ * database evaluates them (listing_criteria_violations); a listing that breaks
+ * one gets a badge but is never hidden.
+ */
+export const huntCriteriaSchema = z
+  .object({
+    maxTotalMonthly: money.optional(),
+    minRooms: z.number().int().positive().optional(),
+    minAreaM2: z.number().positive().optional(),
+    allowedDistricts: z.array(z.string()).optional(),
+    maxDistanceKm: z.number().positive().optional(),
+    /** Pin the distance limit is measured to. guid(): seed ids are not RFC 4122 variants. */
+    distancePinId: z.guid().optional(),
+    privateOnly: z.boolean().optional(),
+    petsAllowed: z.boolean().optional(),
+    availableFrom: z.string().date().optional(),
+    availableTo: z.string().date().optional(),
+    parking: z.boolean().optional(),
+    balcony: z.boolean().optional(),
+    /** Require an elevator when the flat is above this floor. */
+    elevatorAboveFloor: z.number().int().nonnegative().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((c) => !c.availableFrom || !c.availableTo || c.availableFrom <= c.availableTo, {
+    message: 'The available-from window ends before it starts',
+    path: ['availableTo'],
+  })
 export type HuntCriteria = z.infer<typeof huntCriteriaSchema>
 
 export const listingFeaturesSchema = z.object({

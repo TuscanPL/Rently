@@ -1,4 +1,4 @@
-import type { Swipe } from '@at/shared'
+import type { CriteriaViolation, Swipe } from '@at/shared'
 import type { ListingWithPhotos } from './listings'
 
 /** One member's vote as hunt_listing_summaries reports it. Stars are null while hidden. */
@@ -25,8 +25,8 @@ export interface ListingSummary {
   is_maybe: boolean
   reconsider_pending: boolean
   still_no: boolean
-  /** Filled by milestone 4 (hunt criteria); always empty for now. */
-  criteria_violations: unknown[]
+  /** Hunt criteria this listing breaks (see packages/shared/src/criteria.ts). */
+  criteria_violations: CriteriaViolation[]
 }
 
 /** A row of next_deck_cards. Group 1: reconsider request for me, 2: fresh, 3: rejected by someone. */

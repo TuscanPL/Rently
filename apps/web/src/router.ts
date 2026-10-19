@@ -63,7 +63,12 @@ export const router = createRouter({
             },
           ],
         },
-        { path: 'list', name: 'list', component: () => import('@/views/ListView.vue') },
+        {
+          path: 'list',
+          name: 'list',
+          component: () => import('@/views/ListView.vue'),
+          meta: { wide: true },
+        },
         { path: 'add', name: 'add', component: () => import('@/views/AddListingView.vue') },
         {
           path: 'l/:listingId',
@@ -85,8 +90,8 @@ export const router = createRouter({
         {
           path: 'pipeline',
           name: 'pipeline',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { section: 'pipeline' },
+          component: () => import('@/views/PipelineView.vue'),
+          meta: { wide: true },
         },
         {
           path: 'settings',
