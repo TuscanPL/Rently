@@ -85,6 +85,31 @@ export type Database = {
         }
         Relationships: []
       }
+      geocode_cache: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          lat: number | null
+          lng: number | null
+          query: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          lat?: number | null
+          lng?: number | null
+          query: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          lat?: number | null
+          lng?: number | null
+          query?: string
+        }
+        Relationships: []
+      }
       hunt_invites: {
         Row: {
           created_by: string

@@ -176,5 +176,70 @@
   "events": {
     "added": "{who} added it",
     "edited": "{who} edited {fields}"
+  },
+  "map": {
+    "location": "Location",
+    "locationHelp": "When you save, we place the listing from its address. Search or tap the map to set it yourself.",
+    "details": "Details",
+    "close": "Close",
+    "unlocated": "No listings without a location | 1 listing isn't on the map: add its address. | {n} listings aren't on the map: add their addresses.",
+    "legend": {
+      "title": "Your vote:",
+      "yes": "Yes",
+      "maybe": "Maybe",
+      "no": "No",
+      "unvoted": "Not voted",
+      "pin": "Pin"
+    }
+  },
+  "pins": {
+    "title": "Pins",
+    "help": "Places that matter to you, like work, a station or family. Every listing shows its distance to each pin.",
+    "empty": "No pins yet.",
+    "add": "Add pin",
+    "addTitle": "New pin",
+    "editTitle": "Edit pin",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete the pin \"{label}\"?",
+    "save": "Save pin",
+    "label": "Name",
+    "labelPlaceholder": "Office, SKM Służewiec…",
+    "kindLabel": "Type",
+    "kind": {
+      "work": "Work",
+      "station": "Station",
+      "family": "Family",
+      "other": "Other"
+    },
+    "searchLabel": "Search an address",
+    "searchPlaceholder": "Search an address…",
+    "find": "Find",
+    "searching": "Searching…",
+    "notFound": "No match. Try another spelling, or tap the map.",
+    "tapHint": "Search above or tap the map to place it.",
+    "picked": "Placed at {lat}, {lng}. Tap the map to adjust.",
+    "needLocation": "Search an address or tap the map first."
+  },
+  "compare": {
+    "title": "Compare",
+    "start": "Compare",
+    "selectHint": "Pick 2–4 listings",
+    "button": "Compare ({n})",
+    "select": "Select {title} to compare",
+    "backToList": "List",
+    "needTwo": "Pick at least two listings to compare.",
+    "pick": "Pick listings",
+    "remove": "Remove from comparison",
+    "best": "best",
+    "total": "Total per month",
+    "area": "Area",
+    "features": "Features"
+  },
+  "distance": {
+    "title": "Distance to pins",
+    "noPins": "Add pins in Settings to see distances.",
+    "noLocation": "No location yet. Add an address or set it on the map when editing.",
+    "showOnMap": "Show on map"
   }
 }

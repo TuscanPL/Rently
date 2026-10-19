@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { Database } from '@at/shared/database'
-import type { ParsedListing } from '@at/shared'
+import { geocodeQuery, type ParsedListing } from '@at/shared'
 import {
   buildResult,
   canonicalizeUrl,
@@ -14,6 +14,7 @@ import {
   type ParseResult,
 } from '@at/parsers'
 import { BROWSER_HEADERS, HttpError, json, withHttp } from './http.ts'
+import type { Geocoder } from './geocode.ts'
 
 type Db = SupabaseClient<Database>
 type ListingInsert = Database['public']['Tables']['listings']['Insert']
@@ -26,6 +27,8 @@ export interface IngestEnv {
   /** Longest we'll wait for a domain's rate-limit slot before saving without fetching. */
   maxWaitMs?: number
   sleep?: (ms: number) => Promise<void>
+  /** Puts listings that come without coordinates on the map from their address. */
+  geocode?: Geocoder
 }
 
 const MAX_HTML_BYTES = 5_000_000
@@ -76,10 +79,14 @@ export function createIngestHandler(env: IngestEnv) {
     if (!parsedBody.success) throw new HttpError(400, 'Invalid request body')
     const body = parsedBody.data
 
-    const { data: hunt } = await db.from('hunts').select('id').eq('id', body.huntId).maybeSingle()
+    const { data: hunt } = await db
+      .from('hunts')
+      .select('id, city')
+      .eq('id', body.huntId)
+      .maybeSingle()
     if (!hunt) throw new HttpError(404, 'Hunt not found')
 
-    const ctx = { db, body, userId: userData.user.id, fetchExternal, sleep, env }
+    const ctx = { db, body, userId: userData.user.id, city: hunt.city, fetchExternal, sleep, env }
     if (body.text != null) return json(await ingestText(ctx))
     if (body.parsed) return json(await ingestParsed(ctx))
     if (body.url) return json(await ingestUrl(ctx))
@@ -91,6 +98,7 @@ interface Ctx {
   db: Db
   body: IngestBody
   userId: string
+  city: string
   fetchExternal: typeof fetch
   sleep: (ms: number) => Promise<void>
   env: IngestEnv
@@ -254,6 +262,7 @@ async function saveListing(
   const listingId = inserted.id
 
   await savePhotos(ctx, listingId, result.listing)
+  if (row.lat == null && (row.address || row.district)) await locate(ctx, listingId, row)
   await Promise.all([
     db.from('listing_events').insert({
       listing_id: listingId,
@@ -277,6 +286,16 @@ async function saveListing(
     fetched: opts.fetched,
     possibleDuplicates: (dupes ?? []).map((d) => ({ id: d.id, title: d.title })),
   }
+}
+
+/** Geocodes "address, district, city" for a listing saved without coordinates. Best effort. */
+async function locate(ctx: Ctx, listingId: string, row: ListingInsert) {
+  if (!ctx.env.geocode) return
+  const outcome = await ctx.env
+    .geocode(geocodeQuery(row.address, row.district, ctx.city))
+    .catch(() => null)
+  if (outcome?.status !== 'found') return
+  await ctx.db.from('listings').update({ lat: outcome.lat, lng: outcome.lng }).eq('id', listingId)
 }
 
 async function savePhotos(ctx: Ctx, listingId: string, listing: ParsedListing) {

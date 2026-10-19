@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { supabase, type Tables } from '@/lib/supabase'
 import { useHuntsStore } from '@/stores/hunts'
 import { useAuthStore } from '@/stores/auth'
+import PinsSection from '@/components/PinsSection.vue'
 
 const { t, d } = useI18n()
 const router = useRouter()
@@ -246,6 +247,8 @@ function deleteHunt() {
         {{ t('settings.createInvite') }}
       </button>
     </section>
+
+    <PinsSection />
 
     <section class="card space-y-3">
       <h3 class="font-semibold text-rose-700">{{ t('settings.dangerZone') }}</h3>

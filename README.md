@@ -51,7 +51,8 @@ You need a GitHub account, a free [Supabase](https://supabase.com) account, and 
    - Redirect URLs: `https://<user>.github.io/<repo>/**` and `http://localhost:5173/**`
 8. **Deploy:** push to `main`, or run the *Deploy Supabase* and *Deploy web* workflows by hand from the Actions tab. The app goes live at `https://<user>.github.io/<repo>/`.
 9. **Optional, Google sign-in:** create an OAuth client in Google Cloud and enable the Google provider under Authentication → Providers. Then set the `VITE_GOOGLE_AUTH=true` variable.
-10. **Web Push (milestone 6):** generate VAPID keys with `npx web-push generate-vapid-keys` and store them with `supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`.
+10. **Optional, geocoding contact:** the `geocode` function looks addresses up on OpenStreetMap's Nominatim (cached, at most one request a second). Its usage policy asks for a contact address: `supabase secrets set NOMINATIM_EMAIL=you@example.com`.
+11. **Web Push (milestone 6):** generate VAPID keys with `npx web-push generate-vapid-keys` and store them with `supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`.
 
 ### Who can sign up
 

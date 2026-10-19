@@ -51,5 +51,8 @@ export default defineConfig(({ mode }) => {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     server: { port: 5173 },
+    // Leaflet is only imported by lazy routes; pre-bundling it stops the dev server
+    // from discovering it mid-session and reloading the page.
+    optimizeDeps: { include: ['leaflet'] },
   }
 })
