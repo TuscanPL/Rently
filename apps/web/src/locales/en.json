@@ -184,7 +184,11 @@
     "matched": "It's a match: {who} made it unanimous",
     "reconsidered": "{who} took back their no",
     "reconsider_requested": "{who} asked {target} to reconsider",
-    "reconsider_resolved": "{who} reconsidered: {swipe}"
+    "reconsider_resolved": "{who} reconsidered: {swipe}",
+    "price_changed": "Price on the original ad changed to {price}",
+    "ad_removed": "The original ad was taken down",
+    "ad_restored": "The original ad is back online",
+    "merged": "{who} merged in the duplicate “{dropped}”"
   },
   "map": {
     "location": "Location",
@@ -324,5 +328,20 @@
     "match": "It's a match 🏠",
     "view": "View",
     "dismiss": "Dismiss"
+  },
+  "upkeep": {
+    "priceDropped": "Price dropped {amount}",
+    "priceUp": "Price up {amount}",
+    "checkNow": "Check now",
+    "checking": "Checking…",
+    "mergeInto": "Merge into “{title}”",
+    "mergeConfirm": "Merge this listing into “{title}”? Its photos, comments and votes move over and this copy is deleted.",
+    "outcome": {
+      "unchanged": "Checked: the ad is up, no price change.",
+      "price_changed": "Checked: the price changed.",
+      "removed": "Checked: the ad has been taken down.",
+      "restored": "Checked: the ad is back online.",
+      "unknown": "Couldn't reach the site right now. Try again later."
+    }
   }
 }

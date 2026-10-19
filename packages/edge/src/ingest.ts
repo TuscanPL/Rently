@@ -111,7 +111,17 @@ async function findExisting(ctx: Ctx, canonicalUrl: string) {
     .eq('hunt_id', ctx.body.huntId)
     .eq('canonical_url', canonicalUrl)
     .maybeSingle()
-  return data
+  if (data) return data
+  // An ad that was merged into another listing finds the kept one. The element is
+  // quoted because canonical URLs can contain commas (nieruchomosci-online).
+  const { data: merged } = await ctx.db
+    .from('listings')
+    .select('id, needs_details')
+    .eq('hunt_id', ctx.body.huntId)
+    .filter('merged_urls', 'cs', `{"${canonicalUrl.replace(/["\\]/g, '\\$&')}"}`)
+    .limit(1)
+    .maybeSingle()
+  return merged
 }
 
 function existingResponse(row: { id: string; needs_details: boolean }): IngestResponse {

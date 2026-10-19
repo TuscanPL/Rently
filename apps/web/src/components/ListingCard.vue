@@ -6,6 +6,7 @@ import { formatArea, formatPLN } from '@at/shared'
 import { listingTotal, sortedPhotos, type ListingWithPhotos } from '@/lib/listings'
 import ListingImage from './ListingImage.vue'
 import PinDistances from './PinDistances.vue'
+import PriceChangeBadge from './PriceChangeBadge.vue'
 
 const props = defineProps<{ listing: ListingWithPhotos }>()
 const { t } = useI18n()
@@ -43,6 +44,7 @@ const cover = computed(() => photos.value.find((p) => p.is_cover) ?? null)
       >
         {{ t('listing.needsDetails') }}
       </span>
+      <PriceChangeBadge :hunt-id="listing.hunt_id" :listing-id="listing.id" class="mt-1" />
       <!-- Extra badges from the parent (score, vote state…). Keep it non-interactive: the card is a link. -->
       <slot />
     </div>

@@ -375,6 +375,7 @@ export type Database = {
           last_checked_at: string | null
           lat: number | null
           lng: number | null
+          merged_urls: string[]
           needs_details: boolean
           parse_confidence: number | null
           raw: Json | null
@@ -410,6 +411,7 @@ export type Database = {
           last_checked_at?: string | null
           lat?: number | null
           lng?: number | null
+          merged_urls?: string[]
           needs_details?: boolean
           parse_confidence?: number | null
           raw?: Json | null
@@ -444,6 +446,7 @@ export type Database = {
           last_checked_at?: string | null
           lat?: number | null
           lng?: number | null
+          merged_urls?: string[]
           needs_details?: boolean
           parse_confidence?: number | null
           raw?: Json | null
@@ -714,6 +717,19 @@ export type Database = {
           url: string
         }[]
       }
+      listings_due_for_check: {
+        Args: { p_active_after?: string; p_inactive_after?: string; p_limit?: number }
+        Returns: {
+          hunt_id: string
+          id: string
+          is_active: boolean
+          last_checked_at: string
+          rent: number
+          total_due: number
+          url: string
+        }[]
+      }
+      merge_listings: { Args: { p_drop: string; p_keep: string }; Returns: string }
       next_deck_cards: {
         Args: { p_hunt_id: string; p_limit?: number }
         Returns: {
@@ -726,6 +742,10 @@ export type Database = {
           rejected_by: string[]
           still_no: boolean
         }[]
+      }
+      record_listing_check: {
+        Args: { p_admin_fee?: number; p_listing_id: string; p_rent?: number; p_result: string }
+        Returns: string[]
       }
       redeem_invite: { Args: { p_token: string }; Returns: string }
       request_reconsider: { Args: { p_listing_id: string; p_note?: string }; Returns: Json }

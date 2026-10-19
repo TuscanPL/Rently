@@ -1,23 +1,15 @@
-// Daily job, called by .github/workflows/refresh.yml with the CRON_SECRET header.
-// Milestone 1: authenticates and touches the database so the free project stays awake.
-// Milestone 8 adds the liveness and price re-checks.
+// Daily liveness and price re-check. Called by .github/workflows/refresh.yml with
+// the CRON_SECRET header (which also keeps the free project awake), and by the
+// "Check now" button on a listing with the member's JWT and { listingId }.
+// The logic lives in packages/edge and is bundled into ../_shared/edge.js by
+// `pnpm build:functions`.
+import { createRefreshHandler } from '../_shared/edge.js'
 
-Deno.serve(async (req) => {
-  const secret = Deno.env.get('CRON_SECRET')
-  if (!secret || req.headers.get('x-cron-secret') !== secret) {
-    return new Response('Unauthorized', { status: 401 })
-  }
-
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const res = await fetch(
-    `${Deno.env.get('SUPABASE_URL')}/rest/v1/listings?select=id&is_active=eq.true`,
-    {
-      method: 'HEAD',
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, Prefer: 'count=exact' },
-    },
-  )
-  if (!res.ok) return Response.json({ ok: false, status: res.status }, { status: 500 })
-  const activeListings = Number(res.headers.get('content-range')?.split('/')[1] ?? 0)
-
-  return Response.json({ ok: true, activeListings, checked: 0 })
-})
+Deno.serve(
+  createRefreshHandler({
+    supabaseUrl: Deno.env.get('SUPABASE_URL')!,
+    anonKey: Deno.env.get('SUPABASE_ANON_KEY')!,
+    serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    cronSecret: Deno.env.get('CRON_SECRET') || undefined,
+  }),
+)

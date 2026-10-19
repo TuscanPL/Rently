@@ -69,9 +69,27 @@ Forks should replace the seeded addresses with their own.
 
 Magic-link emails use Supabase's default sender. It's rate-limited, but that's fine for a handful of users. Open the link in the same browser you requested it from, because sign-in uses PKCE.
 
+### Daily refresh: liveness and prices
+
+The **Refresh listings** workflow (`.github/workflows/refresh.yml`) runs every morning at 04:00 UTC and POSTs to the `refresh-listings` function with the `x-cron-secret` header. Each call re-checks a batch of up to 20 listings that have a link, oldest check first. It skips listings checked in the last 20 hours, listings with status won / rejected / gone, and ads already marked removed unless they were last checked over 7 days ago (so one that comes back is noticed). Requests go out at most once per site every 4 seconds; different sites are checked side by side. No new fetch starts after 100 seconds, to stay inside the edge function's wall-clock limit. The call answers with a summary such as `{"checked":20,"unchanged":17,"priceChanged":1,"removed":1,"restored":0,"unknown":1,"remaining":12}`. The workflow calls again while `remaining` is above 0, up to 8 times; anything left waits for the next day. It fails on any non-2xx answer.
+
+For each ad:
+
+- **Removed**: 404 or 410, a redirect to a search or category page instead of the ad, or an "ogłoszenie nieaktualne / wygasło / zakończone" notice. The listing is marked *Ad removed* (`is_active = false`); everything saved stays. If the ad comes back later, the listing becomes active again.
+- **Price changed**: the page still parses as a listing and the rent or admin fee differs. The new price is saved, added to the price history, and the cards show "Price dropped 200 zł" or "Price up 150 zł" for two weeks. A price is only taken from a confident parse, and never from a jump of more than 60 %, which is more likely a misread. Other fields are never overwritten, so your edits stay.
+- **Unknown**: network errors, timeouts, 403 / 429 / 5xx, bot walls, or a page that doesn't look like a listing. Nothing changes except the check time. An ad is never marked removed on a guess.
+
+Events (`price_changed`, `ad_removed`, `ad_restored`) land in each listing's history. A member can also press **Check now** on a listing, which uses the same function and the same per-site throttle.
+
+Run it locally with `pnpm functions:serve` and `curl -X POST -H "x-cron-secret: local-cron-secret" http://127.0.0.1:54321/functions/v1/refresh-listings`. To trigger it in production, run the workflow by hand from the Actions tab.
+
 ### Keeping the free project awake
 
-Free Supabase projects pause after 7 days without activity. The daily **Refresh listings** workflow (`.github/workflows/refresh.yml`) calls the `refresh-listings` function, and that call counts as activity. If the project pauses anyway (for example because scheduled workflows got disabled in a fork with no recent commits), open the Supabase dashboard and click **Restore project**. Then re-enable the workflow under Actions.
+Free Supabase projects pause after 7 days without activity. The daily refresh call counts as activity, even when nothing is due. If the project pauses anyway (for example because scheduled workflows got disabled in a fork with no recent commits), open the Supabase dashboard and click **Restore project**. Then re-enable the workflow under Actions.
+
+### Duplicates
+
+Adding a listing that matches another one in the hunt (same price ±2 %, area ±1 m², same district) shows "Looks like a duplicate of X" with **Delete this one**, **Keep both** and **Merge into X**. Merging keeps the older listing and fills its empty fields from the new one (its own values always win). It combines the features and moves photos, comments, price history and history events over. Each member keeps their vote on the older listing; a vote only on the new one moves over. The merged ad's link is remembered, so adding it again opens the kept listing.
 
 ## Local development
 
@@ -93,8 +111,8 @@ pnpm dev                              # http://localhost:5173
 ### Tests
 
 ```sh
-pnpm test                             # unit + fixture tests; ingest integration tests run when the local stack is up
-pnpm db:test                          # pgTAP: RLS keeps non-members out of every table
+pnpm test                             # unit + fixture tests; edge function integration tests run when the local stack is up
+pnpm db:test                          # pgTAP: RLS, deck, re-check bookkeeping, duplicate merge
 pnpm --filter @at/web e2e             # Playwright against the local stack (starts dev server + functions)
 ```
 
@@ -138,4 +156,4 @@ The build-time defaults are `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `V
 5. Map & pins: geocoding, map, distance to pins, compare
 6. Mobile capture: PWA install, share target, Web Push
 7. **Extension** ✅: MV3 for Chrome + Firefox with shared parsers, hunt picker, code sign-in
-8. Upkeep: daily liveness / price job, remaining parsers (Gratka, Morizon, Nieruchomosci-online, Domiporta ✅), duplicate merge
+8. **Upkeep** ✅: daily liveness / price job with "Check now", price badges, remaining parsers (Gratka, Morizon, Nieruchomosci-online, Domiporta), duplicate merge

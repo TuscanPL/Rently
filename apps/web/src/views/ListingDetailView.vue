@@ -10,6 +10,10 @@ import { useVotesStore } from '@/stores/votes'
 import ListingImage from '@/components/ListingImage.vue'
 import PinDistances from '@/components/PinDistances.vue'
 import ListingVotes from '@/components/ListingVotes.vue'
+import PriceChangeBadge from '@/components/PriceChangeBadge.vue'
+import CheckNowButton from '@/components/CheckNowButton.vue'
+import { mergeListings } from '@/lib/upkeep'
+import { usePriceChangesStore } from '@/stores/priceChanges'
 
 type EventRow = Tables<'listing_events'> & { profiles: { display_name: string } | null }
 
@@ -114,6 +118,11 @@ const description = computed(() => {
   return showFullDescription.value || text.length <= 400 ? text : `${text.slice(0, 400)}…`
 })
 
+function onChecked() {
+  void load()
+  void usePriceChangesStore().fetchAll()
+}
+
 function dismissIngestInfo() {
   listingsStore.lastIngest = null
 }
@@ -131,6 +140,19 @@ async function remove() {
   await router.replace({ name: 'list', params: { huntId: huntId.value } })
 }
 
+// Keeps the listing that was there first and folds this new copy into it.
+async function mergeInto(dup: { id: string; title: string | null }) {
+  if (!confirm(t('upkeep.mergeConfirm', { title: dup.title ?? t('listing.untitled') }))) return
+  try {
+    const keptId = await mergeListings(dup.id, listingId.value)
+    dismissIngestInfo()
+    listingsStore.listings = listingsStore.listings.filter((l) => l.id !== listingId.value)
+    await router.replace({ name: 'listing', params: { huntId: huntId.value, listingId: keptId } })
+  } catch (e) {
+    error.value = (e as Error).message
+  }
+}
+
 // Star changes and undone votes would only clutter the timeline.
 const HIDDEN_EVENTS = ['rated', 'unvoted']
 const timeline = computed(() => events.value.filter((e) => !HIDDEN_EVENTS.includes(e.type)))
@@ -143,6 +165,9 @@ function eventText(e: EventRow) {
     outcome?: string
     target_name?: string
     note?: string | null
+    rent_after?: number | null
+    admin_fee_after?: number | null
+    dropped_title?: string | null
   }
   const vote = payload.swipe ?? payload.outcome
   const text = t(
@@ -152,6 +177,8 @@ function eventText(e: EventRow) {
       fields: payload.fields?.join(', ') ?? '',
       swipe: vote ? t(`votes.swipe.${vote}`) : '',
       target: payload.target_name ?? t('listing.someone'),
+      price: formatPLN((payload.rent_after ?? 0) + (payload.admin_fee_after ?? 0)),
+      dropped: payload.dropped_title ?? t('listing.untitled'),
     },
     { default: `${who}: ${e.type}` },
   )
@@ -205,12 +232,21 @@ function eventText(e: EventRow) {
             {{ dup.title ?? t('listing.untitled') }}
           </RouterLink>
         </p>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
           <button type="button" class="btn-danger py-1.5" @click="remove">
             {{ t('listing.deleteThisOne') }}
           </button>
           <button type="button" class="btn-secondary py-1.5" @click="dismissIngestInfo">
             {{ t('listing.keepBoth') }}
+          </button>
+          <button
+            v-for="dup in ingestInfo.possibleDuplicates"
+            :key="dup.id"
+            type="button"
+            class="btn-primary py-1.5"
+            @click="mergeInto(dup)"
+          >
+            {{ t('upkeep.mergeInto', { title: dup.title ?? t('listing.untitled') }) }}
           </button>
         </div>
       </div>
@@ -239,6 +275,7 @@ function eventText(e: EventRow) {
         <p v-if="listing.address || listing.district" class="mt-1 text-slate-600">
           {{ listing.address || listing.district }}
         </p>
+        <PriceChangeBadge :hunt-id="huntId" :listing-id="listingId" class="mt-2" />
       </header>
 
       <section class="card" data-testid="costs">
@@ -313,6 +350,7 @@ function eventText(e: EventRow) {
         >
           {{ t('listing.edit') }}
         </RouterLink>
+        <CheckNowButton v-if="listing.url" :listing-id="listingId" @checked="onChecked" />
       </div>
 
       <section v-if="history.length > 1" class="card">

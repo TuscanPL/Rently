@@ -207,6 +207,35 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
     expect(body.needsDetails).toBe(true)
   })
 
+  it('finds the kept listing when a merged-away ad is added again', async () => {
+    const dropUrl = 'https://warszawa.nieruchomosci-online.pl/mieszkanie,na-wynajem/25999999.html'
+    const keep = await call({ huntId, text: 'Kawalerka na Woli, 2500 zł', fields: { rooms: 1 } })
+    const drop = await call({ huntId, url: dropUrl })
+    expect(drop.body.existing).toBe(false)
+    const { error } = await user.rpc('merge_listings', {
+      p_keep: keep.body.listingId,
+      p_drop: drop.body.listingId,
+    })
+    expect(error).toBeNull()
+
+    // The kept listing had no URL, so it took the dropped one's; merge another into it.
+    const other = await call({
+      huntId,
+      url: 'https://warszawa.nieruchomosci-online.pl/mieszkanie,na-wynajem/25888888.html',
+    })
+    await user.rpc('merge_listings', { p_keep: keep.body.listingId, p_drop: other.body.listingId })
+
+    const again = await call({
+      huntId,
+      url: 'https://warszawa.nieruchomosci-online.pl/mieszkanie,na-wynajem/25888888.html?utm_source=x',
+    })
+    expect(again.body).toMatchObject({ existing: true, listingId: keep.body.listingId })
+    expect((await call({ huntId, url: dropUrl })).body).toMatchObject({
+      existing: true,
+      listingId: keep.body.listingId,
+    })
+  })
+
   it('rejects other hunts, bad bodies and missing auth', async () => {
     expect((await call({ huntId: crypto.randomUUID(), url: OTODOM_URL })).status).toBe(404)
     expect((await call({ huntId: 'nope' })).status).toBe(400)
