@@ -1,0 +1,87 @@
+{
+  "app": { "name": "ApartmentTogether", "tagline": "One shared list of every flat you're considering." },
+  "common": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share",
+    "back": "Back",
+    "error": "Something went wrong: {message}"
+  },
+  "auth": {
+    "title": "Sign in",
+    "joinHint": "Sign in to join the hunt you were invited to.",
+    "email": "Email",
+    "emailPlaceholder": "you{'@'}example.com",
+    "sendLink": "Email me a sign-in link",
+    "sending": "Sending…",
+    "linkSent": "Check your inbox. Open the link on this device to sign in.",
+    "google": "Continue with Google",
+    "or": "or",
+    "signOut": "Sign out"
+  },
+  "account": {
+    "title": "Account",
+    "displayName": "Your name",
+    "displayNameHelp": "How your hunt partners see you."
+  },
+  "hunts": {
+    "title": "Your hunts",
+    "empty": "No hunts yet. Start one and invite the people you're searching with.",
+    "new": "New hunt",
+    "members": "{n} member | {n} members",
+    "create": "Create hunt",
+    "name": "Name",
+    "namePlaceholder": "Warsaw flat 2026",
+    "city": "City"
+  },
+  "nav": {
+    "deck": "Deck",
+    "list": "List",
+    "map": "Map",
+    "pipeline": "Pipeline",
+    "settings": "Settings",
+    "allHunts": "All hunts"
+  },
+  "placeholder": {
+    "deck": "Swipe through listings together. Arrives in milestone 3.",
+    "list": "Sort and filter every listing. Arrives in milestone 4.",
+    "map": "Listings and pins on a map. Arrives in milestone 5.",
+    "pipeline": "Track contact, viewings and applications. Arrives in milestone 4."
+  },
+  "settings": {
+    "title": "Hunt settings",
+    "details": "Details",
+    "reveal": "Hide each member's stars until everyone has voted",
+    "members": "Members",
+    "owner": "Owner",
+    "member": "Member",
+    "you": "you",
+    "remove": "Remove",
+    "removeConfirm": "Remove {name} from this hunt?",
+    "leave": "Leave hunt",
+    "leaveConfirm": "Leave this hunt? You'll need a new invite to come back.",
+    "delete": "Delete hunt",
+    "deleteConfirm": "Delete \"{name}\" and all its listings for everyone? This can't be undone.",
+    "dangerZone": "Danger zone",
+    "invites": "Invite links",
+    "invitesHelp": "Each link lets one person join and expires after 7 days.",
+    "createInvite": "Create invite link",
+    "expires": "Expires {date}",
+    "revoke": "Revoke",
+    "inviteShareText": "Join my apartment hunt \"{name}\" on ApartmentTogether",
+    "ownerOnly": "Only the owner can change these."
+  },
+  "join": {
+    "title": "Join hunt",
+    "invitedBy": "{name} invited you to",
+    "accept": "Join hunt",
+    "joining": "Joining…",
+    "invalid": "This invite link is invalid, expired or already used. Ask for a new one.",
+    "already": "You're already in this hunt.",
+    "open": "Open hunt"
+  }
+}

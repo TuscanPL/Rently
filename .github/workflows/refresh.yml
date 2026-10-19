@@ -1,0 +1,20 @@
+name: Refresh listings
+
+on:
+  schedule:
+    # 04:00 UTC = 06:00 Warsaw in summer, 05:00 in winter.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call refresh-listings
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body -sS -X POST \
+            -H "x-cron-secret: $CRON_SECRET" \
+            "https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/refresh-listings"

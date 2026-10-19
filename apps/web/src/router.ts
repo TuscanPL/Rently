@@ -1,0 +1,87 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { LAST_HUNT_KEY, POST_LOGIN_KEY, readLocal, writeLocal } from '@/lib/storage'
+
+// Hash routing: GitHub Pages has no SPA rewrites, so deep links, magic-link
+// redirects and the share target all live after the "#".
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      redirect: () => {
+        // Coming back from a magic link or OAuth lands on "/": resume where the user was headed.
+        const next = readLocal(POST_LOGIN_KEY)
+        if (next) {
+          writeLocal(POST_LOGIN_KEY, null)
+          return next
+        }
+        const last = readLocal(LAST_HUNT_KEY)
+        return last ? { name: 'deck', params: { huntId: last } } : { name: 'hunts' }
+      },
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/views/LoginView.vue'),
+      meta: { public: true },
+    },
+    { path: '/hunts', name: 'hunts', component: () => import('@/views/HuntsView.vue') },
+    { path: '/hunts/new', name: 'new-hunt', component: () => import('@/views/NewHuntView.vue') },
+    { path: '/account', name: 'account', component: () => import('@/views/AccountView.vue') },
+    { path: '/join/:token', name: 'join', component: () => import('@/views/JoinView.vue') },
+    {
+      path: '/h/:huntId',
+      component: () => import('@/views/HuntLayout.vue'),
+      children: [
+        { path: '', redirect: { name: 'deck' } },
+        {
+          path: 'deck',
+          name: 'deck',
+          component: () => import('@/views/PlaceholderView.vue'),
+          props: { section: 'deck' },
+        },
+        {
+          path: 'list',
+          name: 'list',
+          component: () => import('@/views/PlaceholderView.vue'),
+          props: { section: 'list' },
+        },
+        {
+          path: 'map',
+          name: 'map',
+          component: () => import('@/views/PlaceholderView.vue'),
+          props: { section: 'map' },
+        },
+        {
+          path: 'pipeline',
+          name: 'pipeline',
+          component: () => import('@/views/PlaceholderView.vue'),
+          props: { section: 'pipeline' },
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('@/views/HuntSettingsView.vue'),
+        },
+      ],
+    },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
+  ],
+})
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  await auth.init()
+
+  if (!auth.session && !to.meta.public) {
+    writeLocal(POST_LOGIN_KEY, to.fullPath)
+    return { name: 'login' }
+  }
+  if (auth.session && to.name === 'login') {
+    const next = readLocal(POST_LOGIN_KEY)
+    writeLocal(POST_LOGIN_KEY, null)
+    return next ?? '/'
+  }
+})
