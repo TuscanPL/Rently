@@ -49,3 +49,9 @@ export async function uploadPhoto(huntId: string, file: File): Promise<string> {
   if (error) throw error
   return path
 }
+
+/** A photo picked in a form, with a blob: preview URL, not uploaded yet. */
+export interface PickedPhoto {
+  file: File
+  preview: string
+}

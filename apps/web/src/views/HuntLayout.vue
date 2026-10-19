@@ -63,7 +63,11 @@ onBeforeUnmount(() => {
       <h1 class="truncate text-lg font-semibold">{{ huntsStore.current?.name ?? '…' }}</h1>
     </header>
 
-    <main class="mx-auto w-full max-w-3xl flex-1 px-4 py-4 pb-24 md:pb-6">
+    <!-- The list's card grid and the kanban get more room on wide screens. -->
+    <main
+      class="mx-auto w-full flex-1 px-4 py-4 pb-24 md:pb-6"
+      :class="route.meta.wide ? 'max-w-6xl' : 'max-w-3xl'"
+    >
       <p v-if="error" class="text-rose-700">{{ t('common.error', { message: error }) }}</p>
       <RouterView v-else-if="huntsStore.current" />
       <p v-else class="text-slate-500">{{ t('common.loading') }}</p>

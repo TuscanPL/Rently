@@ -55,7 +55,7 @@ export const useHuntsStore = defineStore('hunts', () => {
   }
 
   async function updateHunt(
-    patch: Partial<Pick<Hunt, 'name' | 'city' | 'reveal_votes_after_both'>>,
+    patch: Partial<Pick<Hunt, 'name' | 'city' | 'reveal_votes_after_both' | 'criteria'>>,
   ) {
     if (!current.value) return
     const { data, error } = await supabase

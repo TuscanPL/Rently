@@ -6,6 +6,7 @@ import { supabase, type Tables } from '@/lib/supabase'
 import { useHuntsStore } from '@/stores/hunts'
 import { useAuthStore } from '@/stores/auth'
 import PinsSection from '@/components/PinsSection.vue'
+import CriteriaSection from '@/components/CriteriaSection.vue'
 
 const { t, d } = useI18n()
 const router = useRouter()
@@ -247,6 +248,8 @@ function deleteHunt() {
         {{ t('settings.createInvite') }}
       </button>
     </section>
+
+    <CriteriaSection />
 
     <PinsSection />
 

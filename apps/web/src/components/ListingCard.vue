@@ -6,6 +6,8 @@ import { formatArea, formatPLN } from '@at/shared'
 import { listingTotal, sortedPhotos, type ListingWithPhotos } from '@/lib/listings'
 import ListingImage from './ListingImage.vue'
 import PinDistances from './PinDistances.vue'
+import CriteriaBadges from './CriteriaBadges.vue'
+import StatusPill from './StatusPill.vue'
 
 const props = defineProps<{ listing: ListingWithPhotos }>()
 const { t } = useI18n()
@@ -37,12 +39,16 @@ const cover = computed(() => photos.value.find((p) => p.is_cover) ?? null)
         <template v-if="listing.district"> · {{ listing.district }}</template>
       </p>
       <PinDistances :listing="listing" compact />
-      <span
-        v-if="listing.needs_details"
-        class="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-      >
-        {{ t('listing.needsDetails') }}
-      </span>
+      <div class="mt-1 flex flex-wrap gap-1 empty:hidden">
+        <StatusPill v-if="listing.status !== 'new'" :status="listing.status" />
+        <span
+          v-if="listing.needs_details"
+          class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+        >
+          {{ t('listing.needsDetails') }}
+        </span>
+        <CriteriaBadges :listing="listing" />
+      </div>
       <!-- Extra badges from the parent (score, vote state…). Keep it non-interactive: the card is a link. -->
       <slot />
     </div>

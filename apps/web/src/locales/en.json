@@ -55,10 +55,6 @@
     "settings": "Settings",
     "allHunts": "All hunts"
   },
-  "placeholder": {
-    "map": "Listings and pins on a map. Arrives in milestone 5.",
-    "pipeline": "Track contact, viewings and applications. Arrives in milestone 4."
-  },
   "settings": {
     "title": "Hunt settings",
     "details": "Details",
@@ -92,7 +88,9 @@
     "open": "Open hunt"
   },
   "list": {
-    "empty": "No listings yet. Paste a link from Otodom, OLX or any other site to start."
+    "empty": "No listings yet. Paste a link from Otodom, OLX or any other site to start.",
+    "count": "Showing {shown} of {total}",
+    "noResults": "No listings match these filters."
   },
   "add": {
     "title": "Add listing",
@@ -184,7 +182,10 @@
     "matched": "It's a match: {who} made it unanimous",
     "reconsidered": "{who} took back their no",
     "reconsider_requested": "{who} asked {target} to reconsider",
-    "reconsider_resolved": "{who} reconsidered: {swipe}"
+    "reconsider_resolved": "{who} reconsidered: {swipe}",
+    "status_changed": "{who} moved it to {to}",
+    "viewing_scheduled": "{who} set the viewing for {date}",
+    "viewing_note": "{who} added a viewing note"
   },
   "map": {
     "location": "Location",
@@ -324,5 +325,141 @@
     "match": "It's a match 🏠",
     "view": "View",
     "dismiss": "Dismiss"
+  },
+  "listFilters": {
+    "sort": "Sort",
+    "sortBy": {
+      "added": "Newest",
+      "total": "Total cost",
+      "perM2": "Cost per m²",
+      "score": "Score",
+      "distance": "Distance"
+    },
+    "pin": "Distance to",
+    "filters": "Filters",
+    "filtersActive": "Filters ({n})",
+    "status": "Status",
+    "myVote": "My vote",
+    "vote": {
+      "any": "Any",
+      "yes": "Yes",
+      "maybe": "Maybe",
+      "no": "No",
+      "unvoted": "Not voted"
+    },
+    "show": "Show",
+    "matchesOnly": "Matches only",
+    "hideViolators": "Hide listings that break criteria",
+    "hideInactive": "Hide removed ads",
+    "needsDetails": "Only ones that need details",
+    "reset": "Reset filters",
+    "done": "Done"
+  },
+  "criteria": {
+    "title": "Criteria",
+    "help": "What the flat must have. A listing that breaks one gets a red badge but never disappears.",
+    "maxTotal": "Max per month, czynsz + opłaty (zł)",
+    "minRooms": "Min rooms",
+    "minArea": "Min area (m²)",
+    "districts": "Allowed districts",
+    "districtsHelp": "Leave empty for anywhere.",
+    "districtPlaceholder": "Mokotów",
+    "addDistrict": "Add",
+    "removeDistrict": "Remove {name}",
+    "maxDistance": "Max distance (km)",
+    "distancePin": "From pin",
+    "noPin": "Choose a pin",
+    "noPins": "Add a pin below to limit the distance.",
+    "pinMissing": "The pin was deleted",
+    "mustHave": "Must have",
+    "privateOnly": "Private landlord (bez pośredników)",
+    "petsAllowed": "Pets allowed",
+    "parking": "Parking",
+    "balcony": "Balcony",
+    "available": "Available between",
+    "availableFrom": "From",
+    "availableTo": "To",
+    "elevatorAbove": "Elevator required above floor",
+    "notes": "Notes",
+    "saved": "Saved",
+    "badge": {
+      "max_total": "Over budget +{over}",
+      "min_rooms": "{actual} room < {limit} | {actual} rooms < {limit}",
+      "min_area": "{actual} < {limit} m²",
+      "district": "{actual}: outside your districts",
+      "max_distance": "{actual} > {limit} from {pin}",
+      "private_only": "Agency",
+      "pets": "No pets",
+      "available_early": "Available {date}, too early",
+      "available_late": "Available {date}, too late",
+      "parking": "No parking",
+      "balcony": "No balcony",
+      "elevator": "Floor {floor}, no elevator"
+    }
+  },
+  "pipeline": {
+    "status": {
+      "new": "New",
+      "contacted": "Contacted",
+      "viewing_booked": "Viewing booked",
+      "viewed": "Viewed",
+      "applied": "Applied",
+      "won": "Won",
+      "rejected": "Rejected",
+      "gone": "Gone"
+    },
+    "hint": "Drag cards between columns, or tap a card to change its status.",
+    "empty": "Nothing here yet",
+    "noListings": "No listings yet. Add some, then track them here from first contact to keys.",
+    "title": "Status",
+    "change": "Change status",
+    "moveTo": "Move to",
+    "current": "now",
+    "open": "Open listing",
+    "viewingTitle": "When is the viewing?",
+    "viewingLabel": "Date and time (Warsaw time)",
+    "saveViewing": "Save",
+    "viewingAt": "Viewing {date}",
+    "setTime": "Set the time",
+    "downloadIcs": "Add to calendar (.ics)",
+    "icsSummary": "Viewing: {title}",
+    "icsDescription": "Open in ApartmentTogether: {url}",
+    "notePending": "Add your viewing note"
+  },
+  "comments": {
+    "title": "Comments",
+    "empty": "No comments yet.",
+    "label": "Comment",
+    "placeholder": "Write a comment…",
+    "send": "Send",
+    "sending": "Sending…",
+    "addPhotos": "Add photos",
+    "removePhoto": "Remove photo",
+    "photo": "Photo from {name}",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this comment?",
+    "uploading": "Uploading photo {n} of {total}…"
+  },
+  "viewingNotes": {
+    "promptTitle": "How was the viewing?",
+    "promptHelp": "Note your impressions while they're fresh. Everyone in the hunt sees them.",
+    "add": "Add viewing note",
+    "aspects": {
+      "smell": "Smell",
+      "light": "Light",
+      "noise": "Noise",
+      "landlord": "Landlord vibe"
+    },
+    "ratings": {
+      "good": "Good",
+      "ok": "OK",
+      "bad": "Bad"
+    },
+    "textLabel": "Anything else?",
+    "textPlaceholder": "Damp in the bathroom, lovely view from the kitchen…",
+    "save": "Save note",
+    "later": "Later",
+    "badge": "Viewing note",
+    "needOne": "Rate at least one thing or write something."
   }
 }

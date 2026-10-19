@@ -134,7 +134,7 @@ The build-time defaults are `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `V
 1. **Foundation** ✅: monorepo, schema + RLS + seed, auth (magic link + Google), hunts, invite links, deploy workflows
 2. **Ingest v1** ✅: paste link → `ingest-listing` → Otodom / OLX / generic parsers, listing detail + edit, add from text + photos
 3. **Deciding** ✅: swipe deck, stars, matches, disagreements, reconsider, realtime toasts
-4. Organize: list / sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
+4. **Organize** ✅: list sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
 5. Map & pins: geocoding, map, distance to pins, compare
 6. Mobile capture: PWA install, share target, Web Push
 7. **Extension** ✅: MV3 for Chrome + Firefox with shared parsers, hunt picker, code sign-in
