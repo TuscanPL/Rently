@@ -43,6 +43,8 @@ const cover = computed(() => photos.value.find((p) => p.is_cover) ?? null)
       >
         {{ t('listing.needsDetails') }}
       </span>
+      <!-- Extra badges from the parent (score, vote state…). Keep it non-interactive: the card is a link. -->
+      <slot />
     </div>
   </RouterLink>
 </template>

@@ -56,7 +56,6 @@
     "allHunts": "All hunts"
   },
   "placeholder": {
-    "deck": "Swipe through listings together. Arrives in milestone 3.",
     "map": "Listings and pins on a map. Arrives in milestone 5.",
     "pipeline": "Track contact, viewings and applications. Arrives in milestone 4."
   },
@@ -180,7 +179,12 @@
   },
   "events": {
     "added": "{who} added it",
-    "edited": "{who} edited {fields}"
+    "edited": "{who} edited {fields}",
+    "voted": "{who} swiped {swipe}",
+    "matched": "It's a match: {who} made it unanimous",
+    "reconsidered": "{who} took back their no",
+    "reconsider_requested": "{who} asked {target} to reconsider",
+    "reconsider_resolved": "{who} reconsidered: {swipe}"
   },
   "map": {
     "location": "Location",
@@ -189,12 +193,13 @@
     "close": "Close",
     "unlocated": "No listings without a location | 1 listing isn't on the map: add its address. | {n} listings aren't on the map: add their addresses.",
     "legend": {
-      "title": "Your vote:",
+      "title": "Votes:",
       "yes": "Yes",
       "maybe": "Maybe",
       "no": "No",
       "unvoted": "Not voted",
-      "pin": "Pin"
+      "pin": "Pin",
+      "match": "Match"
     }
   },
   "pins": {
@@ -246,5 +251,78 @@
     "noPins": "Add pins in Settings to see distances.",
     "noLocation": "No location yet. Add an address or set it on the map when editing.",
     "showOnMap": "Show on map"
+  },
+  "deck": {
+    "segmentLabel": "Deck views",
+    "segments": {
+      "deck": "Swipe",
+      "matches": "Matches",
+      "disagreements": "Disagreements",
+      "maybes": "Maybes"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "maybe": "Maybe",
+    "undo": "Undo last swipe",
+    "details": "Details",
+    "perMonth": "per month, czynsz + opłaty",
+    "yourRating": "Your rating (optional)",
+    "rejectedBy": "✗ Rejected by {names}",
+    "reconsiderAsk": "{name} asks you to take another look",
+    "stillNo": "Still no",
+    "keyboardHint": "Keys: ← no · ↑ maybe · → yes · Ctrl+Z undo",
+    "stamp": {
+      "yes": "YES",
+      "no": "NOPE",
+      "maybe": "MAYBE"
+    },
+    "empty": {
+      "title": "You're all caught up",
+      "allVoted": "You've voted on every listing. New ones land here as soon as anyone adds them.",
+      "noListings": "No listings yet. Add the first one and start swiping.",
+      "seeMatches": "See matches"
+    }
+  },
+  "votes": {
+    "title": "Votes",
+    "mine": "Your vote",
+    "everyone": "Everyone",
+    "stars": "Rating",
+    "rate": "{n} star | {n} stars",
+    "swipe": {
+      "yes": "Yes",
+      "maybe": "Maybe",
+      "no": "No"
+    },
+    "notYet": "not voted",
+    "hidden": "Stars stay hidden until everyone has voted.",
+    "rateAfterSwipe": "Vote first, then rate.",
+    "score": "Score {score}",
+    "matchBonus": "includes +1 for a match"
+  },
+  "reconsider": {
+    "button": "Reconsider",
+    "title": "Reconsider this listing?",
+    "help": "If you said no, your vote is cleared and it's back in your deck. Anyone else who said no gets it back at the top of their deck.",
+    "noteLabel": "Note (optional)",
+    "notePlaceholder": "e.g. the price dropped, pets are OK after all",
+    "submit": "Reconsider",
+    "pending": "Reconsider requested",
+    "sent": "Sent. It's back at the top of their deck.",
+    "cleared": "Your no is cleared. It's back in your deck."
+  },
+  "matches": {
+    "empty": "No matches yet. A listing lands here once everyone swipes yes."
+  },
+  "disagreements": {
+    "empty": "No disagreements. Listings show up here when one of you says yes and another says no, or your stars are 2+ apart."
+  },
+  "maybes": {
+    "empty": "No maybes. Swipe up on a card to park it here."
+  },
+  "toast": {
+    "match": "It's a match 🏠",
+    "view": "View",
+    "dismiss": "Dismiss"
   }
 }

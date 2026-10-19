@@ -37,10 +37,31 @@ export const router = createRouter({
       children: [
         { path: '', redirect: { name: 'deck' } },
         {
+          // The Deck tab: swipe plus the Matches / Disagreements / Maybes lists.
           path: 'deck',
-          name: 'deck',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { section: 'deck' },
+          component: () => import('@/views/DeckLayout.vue'),
+          meta: { tab: 'deck' },
+          children: [
+            { path: '', name: 'deck', component: () => import('@/views/SwipeView.vue') },
+            {
+              path: 'matches',
+              name: 'matches',
+              component: () => import('@/views/DecisionListView.vue'),
+              props: { kind: 'matches' },
+            },
+            {
+              path: 'disagreements',
+              name: 'disagreements',
+              component: () => import('@/views/DecisionListView.vue'),
+              props: { kind: 'disagreements' },
+            },
+            {
+              path: 'maybes',
+              name: 'maybes',
+              component: () => import('@/views/DecisionListView.vue'),
+              props: { kind: 'maybes' },
+            },
+          ],
         },
         { path: 'list', name: 'list', component: () => import('@/views/ListView.vue') },
         { path: 'add', name: 'add', component: () => import('@/views/AddListingView.vue') },

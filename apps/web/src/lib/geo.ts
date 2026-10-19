@@ -50,11 +50,13 @@ export function pinDistances(place: MaybeLatLng | null | undefined, pins: Pin[])
  */
 export interface MarkerVoteState {
   myVote: Swipe | null
+  isMatch: boolean
 }
 
-export type MarkerTone = 'yes' | 'maybe' | 'no' | 'unvoted'
+export type MarkerTone = 'match' | 'yes' | 'maybe' | 'no' | 'unvoted'
 
 export const MARKER_COLORS: Record<MarkerTone, string> = {
+  match: '#7c3aed', // violet-600
   yes: '#059669', // emerald-600
   maybe: '#d97706', // amber-600
   no: '#e11d48', // rose-600
@@ -62,6 +64,7 @@ export const MARKER_COLORS: Record<MarkerTone, string> = {
 }
 
 export function markerTone(state: MarkerVoteState): MarkerTone {
+  if (state.isMatch) return 'match'
   return state.myVote ?? 'unvoted'
 }
 

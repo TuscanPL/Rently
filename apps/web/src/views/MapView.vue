@@ -3,8 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { RouterLink, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
-import { formatArea, formatPLN, hasCoords, type Swipe } from '@at/shared'
-import { supabase } from '@/lib/supabase'
+import { formatArea, formatPLN, hasCoords } from '@at/shared'
 import {
   DEFAULT_CENTER,
   MARKER_COLORS,
@@ -15,7 +14,7 @@ import {
 } from '@/lib/geo'
 import { createMap, pinMarker, trackSize } from '@/lib/leaflet'
 import { listingTotal, sortedPhotos } from '@/lib/listings'
-import { useAuthStore } from '@/stores/auth'
+import { useVotesStore } from '@/stores/votes'
 import { useListingsStore } from '@/stores/listings'
 import { usePinsStore } from '@/stores/pins'
 import ListingImage from '@/components/ListingImage.vue'
@@ -23,13 +22,12 @@ import PinDistances from '@/components/PinDistances.vue'
 
 const { t } = useI18n()
 const route = useRoute()
-const auth = useAuthStore()
+const votesStore = useVotesStore()
 const listingsStore = useListingsStore()
 const pinsStore = usePinsStore()
 const huntId = route.params.huntId as string
 
 const mapEl = useTemplateRef<HTMLDivElement>('mapEl')
-const myVotes = ref(new Map<string, Swipe>())
 const focusId = typeof route.query.focus === 'string' ? route.query.focus : null
 const selectedId = ref<string | null>(focusId)
 
@@ -44,20 +42,19 @@ let map: L.Map | null = null
 const listingLayer = L.layerGroup()
 const pinLayer = L.layerGroup()
 let fitted = false
+/** Which listings and pins the current framing covers. */
+let framedKey = ''
 
-// Milestone 3 swaps this for the hunt-wide vote summary (matches etc.).
 function voteState(listingId: string): MarkerVoteState {
-  return { myVote: myVotes.value.get(listingId) ?? null }
+  const summary = votesStore.summaries[listingId]
+  return { myVote: summary?.my_swipe ?? null, isMatch: summary?.is_match ?? false }
 }
 
-async function loadVotes() {
-  const { data } = await supabase
-    .from('votes')
-    .select('listing_id, swipe, listings!inner(hunt_id)')
-    .eq('user_id', auth.userId!)
-    .eq('listings.hunt_id', huntId)
-  myVotes.value = new Map((data ?? []).map((v) => [v.listing_id, v.swipe]))
-}
+// Listings and summaries refetch on every hunt event; only redraw when a marker
+// actually moves or changes colour, so taps don't land on replaced markers.
+const markerKey = computed(() =>
+  located.value.map((l) => `${l.id}:${l.lat}:${l.lng}:${markerTone(voteState(l.id))}`).join(),
+)
 
 function draw() {
   if (!map) return
@@ -83,8 +80,12 @@ function draw() {
   for (const pin of pinsStore.pins) pinMarker(pin).addTo(pinLayer)
 
   // Frame everything once, after the data has arrived.
-  if (!fitted && !listingsStore.loading) {
+  // Re-frame when listings or pins appear later (e.g. a listing geocoded after the
+  // map opened), but never after the user has moved the map themselves.
+  const key = [...located.value.map((l) => l.id), ...pinsStore.pins.map((p) => p.id)].join()
+  if (!listingsStore.loading && !userMoved && key !== framedKey) {
     fitted = true
+    framedKey = key
     fit()
   }
 }
@@ -127,7 +128,6 @@ onMounted(() => {
     if (fitted && !userMoved) fit()
   })
   draw()
-  void loadVotes()
 })
 
 onBeforeUnmount(() => {
@@ -136,9 +136,9 @@ onBeforeUnmount(() => {
   map = null
 })
 
-watch([located, () => pinsStore.pins, myVotes, selectedId, () => listingsStore.loading], draw)
+watch([markerKey, () => pinsStore.pins, selectedId, () => listingsStore.loading], draw)
 
-const legend = (['yes', 'maybe', 'no', 'unvoted'] as const).map((tone) => ({
+const legend = (['match', 'yes', 'maybe', 'no', 'unvoted'] as const).map((tone) => ({
   tone,
   color: MARKER_COLORS[tone],
 }))

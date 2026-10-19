@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-defineProps<{ section: 'deck' | 'list' | 'map' | 'pipeline' }>()
+defineProps<{ section: 'map' | 'pipeline' }>()
 const { t } = useI18n()
 </script>
 

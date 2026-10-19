@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { geocodeQuery, type LatLng } from '@at/shared'
@@ -19,7 +19,8 @@ const huntsStore = useHuntsStore()
 const listingId = route.params.listingId as string
 const huntId = route.params.huntId as string
 
-const original = ref<Listing | null>(null)
+// Ref<T> instead of ref<T>(): unwrapping the recursive Json columns trips TS2589.
+const original = ref(null) as Ref<Listing | null>
 const draft = ref<ListingDraft | null>(null)
 const location = ref<LatLng | null>(null)
 /** Set once the user searches or taps the map; otherwise saving re-geocodes a changed address. */
