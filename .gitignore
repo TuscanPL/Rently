@@ -13,3 +13,6 @@ supabase/.branches
 supabase/.temp
 supabase/functions/.env
 supabase/functions/_shared/edge.js
+
+# Agent worktrees
+.claude/worktrees/
