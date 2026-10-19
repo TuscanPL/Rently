@@ -114,3 +114,130 @@ export function title(html: string): string | undefined {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
   return m ? decodeEntities(m[1]!).trim() || undefined : undefined
 }
+
+/** Text of the first <h1>. */
+export function h1(html: string): string | undefined {
+  const m = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)
+  return m ? htmlToText(m[1]!) || undefined : undefined
+}
+
+/** Text of the first element whose attribute matches (see element()). */
+export function elementText(html: string, name: string, value: RegExp): string | undefined {
+  const inner = element(html, name, value)
+  return inner ? htmlToText(inner).replace(/\s+/g, ' ').trim() || undefined : undefined
+}
+
+/**
+ * Inner HTML of the first element whose attribute matches, e.g.
+ * element(html, 'class', /\bgallery\b/). Nesting is balanced on the element's own
+ * tag name only, which is enough for the containers adapters look at.
+ */
+export function element(html: string, name: string, value: RegExp): string | undefined {
+  const open = new RegExp(`<([a-z][\\w-]*)\\b[^>]*\\s${name}\\s*=\\s*("[^"]*"|'[^']*')[^>]*>`, 'gi')
+  for (const m of html.matchAll(open)) {
+    if (!value.test(m[2]!.slice(1, -1))) continue
+    const tag = m[1]!.toLowerCase()
+    const start = m.index + m[0].length
+    if (m[0].endsWith('/>')) return ''
+    const re = new RegExp(`<(/?)${tag}\\b[^>]*>`, 'gi')
+    re.lastIndex = start
+    let depth = 1
+    for (let t = re.exec(html); t; t = re.exec(html)) {
+      if (t[1]) depth--
+      else if (!t[0].endsWith('/>')) depth++
+      if (depth === 0) return html.slice(start, t.index)
+    }
+    return html.slice(start)
+  }
+  return undefined
+}
+
+/**
+ * Visible text split at every tag, one trimmed non-empty line per text node.
+ * Label/value markup ("<dt>Piętro</dt><dd>3/5</dd>") becomes two lines.
+ */
+export function textLines(html: string): string[] {
+  return decodeEntities(
+    html
+      .replace(/<(script|style|svg|noscript|template)\b[\s\S]*?<\/\1>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<sup>\s*2\s*<\/sup>/gi, '²')
+      .replace(/<[^>]+>/g, '\n'),
+  )
+    .split('\n')
+    .map((l) => l.replace(/[\s ]+/g, ' ').trim())
+    .filter(Boolean)
+}
+
+const VALUE_ATTR: Record<string, string> = {
+  meta: 'content',
+  link: 'href',
+  a: 'href',
+  img: 'src',
+  source: 'src',
+  time: 'datetime',
+  data: 'value',
+}
+
+/**
+ * schema.org microdata: every itemprop's values in page order, flattened (nested
+ * itemscopes are not kept apart). Values come from content/href/src/datetime,
+ * or the element's text.
+ */
+export function itemprops(html: string): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  const re = /<([a-z][\w-]*)\b([^>]*\sitemprop\s*=\s*("[^"]*"|'[^']*')[^>]*)>/gi
+  for (const m of html.matchAll(re)) {
+    const tag = m[1]!.toLowerCase()
+    const attrs = m[2]!
+    const valueAttr = VALUE_ATTR[tag]
+    let value = attr(attrs, 'content') ?? (valueAttr ? attr(attrs, valueAttr) : undefined)
+    if (value == null && !/\sitemscope\b/i.test(attrs) && !m[0].endsWith('/>')) {
+      const close = new RegExp(`</${tag}\\s*>`, 'gi')
+      close.lastIndex = m.index + m[0].length
+      const end = close.exec(html)
+      if (end) value = htmlToText(html.slice(m.index + m[0].length, end.index))
+    }
+    if (value == null || value.trim() === '') continue
+    for (const n of m[3]!.slice(1, -1).trim().split(/\s+/)) {
+      const values = out.get(n) ?? []
+      values.push(value.trim())
+      out.set(n, values)
+    }
+  }
+  return out
+}
+
+/** First value of a data-* attribute anywhere on the page, e.g. dataAttr(html, 'lat'). */
+export function dataAttr(html: string, name: string): string | undefined {
+  const m = html.match(new RegExp(`\\sdata-${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i'))
+  return m ? decodeEntities(m[1] ?? m[2] ?? '').trim() || undefined : undefined
+}
+
+export interface ImageCandidate {
+  src: string
+  /** srcset entries with a width descriptor, smallest first. */
+  srcset: { url: string; w: number }[]
+}
+
+/** Every <img> in a chunk of HTML, in order, with lazy-loading attributes resolved. */
+export function imageCandidates(html: string): ImageCandidate[] {
+  const out: ImageCandidate[] = []
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = m[0]
+    const srcset = (attr(tag, 'data-srcset') ?? attr(tag, 'srcset') ?? '')
+      .split(/,\s+/)
+      .map((entry) => {
+        const [u, d] = entry.trim().split(/\s+/)
+        return { url: u ?? '', w: Number(d?.match(/^(\d+)w$/)?.[1] ?? NaN) }
+      })
+      .filter((e) => /^https?:\/\//.test(e.url) && Number.isFinite(e.w))
+      .sort((a, b) => a.w - b.w)
+    const src = [attr(tag, 'data-src'), attr(tag, 'data-lazy'), attr(tag, 'src')].find(
+      (s) => s && /^https?:\/\//.test(s),
+    )
+    const best = src ?? srcset[srcset.length - 1]?.url
+    if (best) out.push({ src: best, srcset })
+  }
+  return out
+}
