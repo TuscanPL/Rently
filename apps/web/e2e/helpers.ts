@@ -6,18 +6,33 @@ export function uniqueEmail(name: string) {
   return `${name}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@test.local`
 }
 
-async function fetchMagicLink(email: string): Promise<string> {
+/** Polls Mailpit for the newest email to `email` until `extract` finds something in its text. */
+async function fromLatestEmail(email: string, extract: (text: string) => string | undefined) {
   for (let attempt = 0; attempt < 30; attempt++) {
     const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`)
     const { messages } = (await res.json()) as { messages: { ID: string }[] }
     if (messages.length > 0) {
       const msg = await (await fetch(`${MAILPIT}/api/v1/message/${messages[0]!.ID}`)).json()
-      const link = (msg.Text as string).match(/https?:\/\/\S+\/auth\/v1\/verify\S+/)?.[0]
-      if (link) return link.replace(/&amp;/g, '&').replace(/\)$/, '')
+      const found = extract(msg.Text as string)
+      if (found) return found
     }
     await new Promise((r) => setTimeout(r, 500))
   }
-  throw new Error(`No magic link email for ${email}`)
+  throw new Error(`No matching email for ${email}`)
+}
+
+function fetchMagicLink(email: string): Promise<string> {
+  return fromLatestEmail(email, (text) =>
+    text
+      .match(/https?:\/\/\S+\/auth\/v1\/verify\S+/)?.[0]
+      ?.replace(/&amp;/g, '&')
+      .replace(/\)$/, ''),
+  )
+}
+
+/** The one-time code printed in the sign-in email (supabase/templates/magic_link.html). */
+export function fetchSignInCode(email: string): Promise<string> {
+  return fromLatestEmail(email, (text) => text.match(/code[^0-9]*?(\d{6})\b/i)?.[1])
 }
 
 /** Signs in through the real magic-link flow. Assumes the page is on the login screen. */

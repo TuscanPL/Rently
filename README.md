@@ -8,7 +8,7 @@ It runs as a static PWA on **GitHub Pages**, with a **Supabase free-tier** proje
 
 ```
 apps/web            Vue 3 + Vite PWA (hash routing, Pinia, Tailwind, vue-i18n)
-apps/extension      MV3 browser extension (milestone 7)
+apps/extension      MV3 browser extension (Chrome + Firefox)
 packages/parsers    site adapters, shared by the edge function and the extension
 packages/shared     enums, zod schemas, cost helpers, generated DB types
 packages/edge       edge function logic (typed + tested in Node), bundled for Deno
@@ -54,6 +54,8 @@ You need a GitHub account, a free [Supabase](https://supabase.com) account, and 
 10. **Optional, geocoding contact:** the `geocode` function looks addresses up on OpenStreetMap's Nominatim (cached, at most one request a second). Its usage policy asks for a contact address: `supabase secrets set NOMINATIM_EMAIL=you@example.com`.
 11. **Web Push (milestone 6):** generate VAPID keys with `npx web-push generate-vapid-keys` and store them with `supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`.
 
+11. **Sign-in codes:** the browser extension signs in with the one-time code from the sign-in email, so the email must contain it. In Supabase, go to **Authentication → Email Templates → Magic Link** and paste `supabase/templates/magic_link.html`, or add `{{ .Token }}` to your own template. The local stack already uses this template (see `config.toml`). The web app accepts the code too ("Have a code? Enter it"), which helps when an installed PWA's link opens in another browser.
+
 ### Who can sign up
 
 Sign-ups are locked to an allowlist (`public.signup_allowlist`, seeded with the two owners' addresses in `supabase/migrations/20261019000100_email_allowlist.sql`). A trigger on `auth.users` rejects every other email, for both magic links and Google. To let someone in, run this in the Supabase SQL editor:
@@ -96,6 +98,37 @@ pnpm db:test                          # pgTAP: RLS keeps non-members out of ever
 pnpm --filter @at/web e2e             # Playwright against the local stack (starts dev server + functions)
 ```
 
+## Browser extension
+
+`apps/extension` is an MV3 extension for Chrome and Firefox. On a listing page, click its toolbar button. The popup reads the page as it appears in your browser, runs the same parsers as the server (`packages/parsers`), and shows a short preview. Pick a hunt and click **Add this listing**. The parsed data goes to `ingest-listing`, which checks for duplicates and saves the listing. This also works on sites that block server-side fetching.
+
+**Build**
+
+```sh
+cp apps/extension/.env.example apps/extension/.env.local   # optional build-time defaults
+pnpm --filter @at/extension build    # dist/chrome and dist/firefox
+pnpm --filter @at/extension zip      # + release/apartment-together-{chrome,firefox}-<version>.zip
+```
+
+The build-time defaults are `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_WEB_APP_URL` (the app root, used for "Open in the app" links). For Firefox, also set `EXT_GECKO_ID`. Release builds come from `.github/workflows/build-extension.yml`. Push a tag like `ext-v0.2.0` (or run the workflow by hand). The workflow uses the same `VITE_SUPABASE_*` secrets or variables as the web deploy, plus optional `VITE_WEB_APP_URL` and `EXT_GECKO_ID` variables, and attaches both zips to a GitHub release.
+
+**Install in Chrome (unpacked):** unzip the Chrome zip, or use `dist/chrome`. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the folder. Keep the folder, because Chrome loads the extension from it.
+
+**Install in Firefox (unlisted, AMO-signed):** Firefox only installs signed add-ons for good. Unlisted signing is free and doesn't publish anything:
+
+1. Create API keys at https://addons.mozilla.org/developers/addon/api/key/.
+2. Set a gecko id that is unique to you (`EXT_GECKO_ID=apartment-together@<you>.example`) and build.
+3. `WEB_EXT_API_KEY=… WEB_EXT_API_SECRET=… pnpm --filter @at/extension sign:firefox`. This runs `web-ext sign --channel unlisted` and writes the signed `.xpi` to `apps/extension/release/`.
+4. Open the `.xpi` in Firefox to install it. For a quick test without signing, use `about:debugging` → **Load Temporary Add-on** (it is removed when Firefox restarts).
+
+**Settings page:** right-click the toolbar button and choose **Options** (or **Manage extension → Preferences** in Firefox). Set the Supabase URL, the **anon** key, and the web app URL there to point a build at a fork. The settings page refuses the service-role key.
+
+**Signing in:** enter your email in the popup. You get the usual sign-in email; type the 6-digit code from it into the popup. Magic links can't open inside an extension, so the extension uses the code. The popup remembers that a code is pending, so it's fine if the popup closes while you check your inbox. The extension keeps its own session in extension storage, separate from the web app, and only signs in existing accounts (sign in to the web app once first).
+
+**Permissions:** `activeTab` and `scripting` let the extension read the current tab, and only when you click the button. `storage` holds settings and the session. A host permission covers the build-time Supabase URL. A Supabase URL set on the settings page also works, because Supabase allows cross-origin requests.
+
+**Tests:** `pnpm --filter @at/extension test` runs the unit tests. `pnpm --filter @at/extension e2e` builds nothing itself, so run `pnpm --filter @at/extension build` first. It loads `dist/chrome` into headless Chromium, sets up the extension on its settings page, signs in with a code from Mailpit, and adds a routed Otodom fixture page to a hunt on the local stack.
+
 ## Milestones
 
 1. **Foundation** ✅: monorepo, schema + RLS + seed, auth (magic link + Google), hunts, invite links, deploy workflows
@@ -104,5 +137,5 @@ pnpm --filter @at/web e2e             # Playwright against the local stack (star
 4. Organize: list / sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
 5. Map & pins: geocoding, map, distance to pins, compare
 6. Mobile capture: PWA install, share target, Web Push
-7. Extension: MV3 with shared parsers
-8. Upkeep: daily liveness / price job, remaining parsers, duplicate merge
+7. **Extension** ✅: MV3 for Chrome + Firefox with shared parsers, hunt picker, code sign-in
+8. Upkeep: daily liveness / price job, remaining parsers (Gratka, Morizon, Nieruchomosci-online, Domiporta ✅), duplicate merge

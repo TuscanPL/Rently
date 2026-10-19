@@ -3,6 +3,10 @@ import { buildResult, mergeResults } from './result.ts'
 import { genericAdapter } from './adapters/generic.ts'
 import { otodomAdapter } from './adapters/otodom.ts'
 import { olxAdapter } from './adapters/olx.ts'
+import { gratkaAdapter } from './adapters/gratka.ts'
+import { morizonAdapter } from './adapters/morizon.ts'
+import { nieruchomosciOnlineAdapter } from './adapters/nieruchomosci-online.ts'
+import { domiportaAdapter } from './adapters/domiporta.ts'
 import { titleFromUrl } from './url.ts'
 
 export type { ParseResult, SiteAdapter, TextExtractor, ImportantField } from './types.ts'
@@ -11,7 +15,14 @@ export { extractFromText } from './text.ts'
 export { canonicalizeUrl, sourceForUrl, firstUrl, titleFromUrl, hostOf } from './url.ts'
 export { buildResult, sanitize as sanitizeListing } from './result.ts'
 
-export const ADAPTERS: SiteAdapter[] = [otodomAdapter, olxAdapter]
+export const ADAPTERS: SiteAdapter[] = [
+  otodomAdapter,
+  olxAdapter,
+  gratkaAdapter,
+  morizonAdapter,
+  nieruchomosciOnlineAdapter,
+  domiportaAdapter,
+]
 
 function attempt(adapter: SiteAdapter, html: string, url: URL): ParseResult | undefined {
   try {

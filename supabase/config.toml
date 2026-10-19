@@ -244,6 +244,13 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Magic-link email with the one-time code too: the browser extension (and an
+# installed PWA whose link opens in another browser) signs in with the code.
+# Hosted projects: paste the same template under Auth → Email Templates → Magic Link.
+[auth.email.template.magic_link]
+subject = "Your ApartmentTogether sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

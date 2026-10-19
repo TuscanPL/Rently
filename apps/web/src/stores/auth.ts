@@ -59,6 +59,25 @@ export const useAuthStore = defineStore('auth', () => {
     if (error) throw new Error(describeAuthError(error.message))
   }
 
+  /** The code in the same email; for when the link opens in another browser (e.g. installed PWA). */
+  async function verifyCode(email: string, code: string) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: code.replace(/\s+/g, ''),
+      type: 'email',
+    })
+    if (error) {
+      throw new Error(
+        /expired|invalid/i.test(error.message)
+          ? i18n.global.t('auth.badCode')
+          : describeAuthError(error.message),
+      )
+    }
+    // Set it now (not only via onAuthStateChange) so the caller can navigate right away.
+    session.value = data.session
+    await loadProfile()
+  }
+
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -92,6 +111,7 @@ export const useAuthStore = defineStore('auth', () => {
     authError,
     init,
     sendMagicLink,
+    verifyCode,
     signInWithGoogle,
     updateDisplayName,
     signOut,

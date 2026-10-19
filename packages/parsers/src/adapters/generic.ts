@@ -13,11 +13,21 @@ function typeOf(node: Obj): string {
   return [node['@type']].flat().join(' ')
 }
 
-function imageUrls(v: unknown): string[] {
+export function imageUrls(v: unknown): string[] {
   return [v]
     .flat()
     .map((i) => (typeof i === 'string' ? i : ((i as Obj)?.url ?? (i as Obj)?.contentUrl)))
     .filter((i): i is string => typeof i === 'string')
+}
+
+/** The JSON-LD node that describes the listing, with its offer and a field picker. */
+export function jsonLdListing(html: string) {
+  const node: Obj = jsonLd(html).find((n) => LISTING_TYPES.test(typeOf(n))) ?? {}
+  const about: Obj = node.itemOffered ?? node.about ?? node.mainEntity ?? {}
+  const pick = (key: string) => node[key] ?? about[key]
+  const offers: Obj =
+    [node.offers ?? about.offers].flat()[0] ?? (typeOf(node).includes('Offer') ? node : {})
+  return { node, offers, pick }
 }
 
 /** JSON-LD → OpenGraph → <title>/meta. Works on any site, finds little on most. */
@@ -25,12 +35,7 @@ export const genericAdapter: SiteAdapter = {
   name: 'generic',
   matches: () => true,
   parse(html, url) {
-    const nodes = jsonLd(html)
-    const node: Obj = nodes.find((n) => LISTING_TYPES.test(typeOf(n))) ?? {}
-    const about: Obj = node.itemOffered ?? node.about ?? node.mainEntity ?? {}
-    const pick = (key: string) => node[key] ?? about[key]
-    const offers: Obj =
-      [node.offers ?? about.offers].flat()[0] ?? (typeOf(node).includes('Offer') ? node : {})
+    const { node, offers, pick } = jsonLdListing(html)
     const addr: Obj = pick('address') ?? {}
     const geo: Obj = pick('geo') ?? {}
     const description =
