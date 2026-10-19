@@ -7,6 +7,7 @@ import { useListingsStore } from '@/stores/listings'
 import { usePinsStore } from '@/stores/pins'
 import { useVotesStore } from '@/stores/votes'
 import MatchToast from '@/components/MatchToast.vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -60,7 +61,10 @@ onBeforeUnmount(() => {
       <RouterLink :to="{ name: 'hunts' }" class="text-brand-700" :aria-label="t('nav.allHunts')"
         >‹</RouterLink
       >
-      <h1 class="truncate text-lg font-semibold">{{ huntsStore.current?.name ?? '…' }}</h1>
+      <h1 class="min-w-0 flex-1 truncate text-lg font-semibold">
+        {{ huntsStore.current?.name ?? '…' }}
+      </h1>
+      <NotificationBell class="-my-1.5 -mr-2" />
     </header>
 
     <main class="mx-auto w-full max-w-3xl flex-1 px-4 py-4 pb-24 md:pb-6">

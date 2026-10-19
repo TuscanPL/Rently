@@ -17,8 +17,14 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        // Our own worker (src/sw.ts): workbox precaching and the index.html
+        // navigation fallback, plus the Web Push `push` / `notificationclick` handlers.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
         manifest: {
+          id: base,
           name: 'ApartmentTogether',
           short_name: 'AptTogether',
           description: 'Search for a rental apartment together.',
@@ -27,22 +33,22 @@ export default defineConfig(({ mode }) => {
           display: 'standalone',
           scope: base,
           start_url: base,
+          // Relative to the manifest, which is served at <base>manifest.webmanifest.
           icons: [
             { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
             { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
           // GET keeps sharing working on static hosting with no service worker handler.
-          // The browser puts the params in the real query string (?url=…#/add), so the
-          // add view reads them from window.location.search.
+          // The browser puts the params in the real query string (?url=…#/add);
+          // lib/share.ts moves them into the hash route's query before routing.
           share_target: {
             action: `${base}#/add`,
             method: 'GET',
             params: { title: 'title', text: 'text', url: 'url' },
           },
         },
-        workbox: {
-          navigateFallback: `${base}index.html`,
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         },
       }),

@@ -38,3 +38,13 @@ export type Swipe = (typeof SWIPES)[number]
 
 export const COMMENT_KINDS = ['comment', 'viewing_note'] as const
 export type CommentKind = (typeof COMMENT_KINDS)[number]
+
+export const NOTIFICATION_KINDS = [
+  'match',
+  'listing_added',
+  'reconsider_request',
+  'status_changed',
+  'ad_removed',
+  'price_dropped',
+] as const
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]
