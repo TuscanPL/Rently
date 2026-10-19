@@ -54,11 +54,12 @@ export const router = createRouter({
           name: 'listing-edit',
           component: () => import('@/views/ListingEditView.vue'),
         },
+        { path: 'map', name: 'map', component: () => import('@/views/MapView.vue') },
         {
-          path: 'map',
-          name: 'map',
-          component: () => import('@/views/PlaceholderView.vue'),
-          props: { section: 'map' },
+          // ?ids=a,b,c: two to four listings side by side.
+          path: 'compare',
+          name: 'compare',
+          component: () => import('@/views/CompareView.vue'),
         },
         {
           path: 'pipeline',

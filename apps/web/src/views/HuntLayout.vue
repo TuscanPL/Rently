@@ -4,12 +4,14 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHuntsStore } from '@/stores/hunts'
 import { useListingsStore } from '@/stores/listings'
+import { usePinsStore } from '@/stores/pins'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const huntsStore = useHuntsStore()
 const listingsStore = useListingsStore()
+const pinsStore = usePinsStore()
 const showAdd = computed(() => route.name === 'deck' || route.name === 'list')
 const error = ref<string | null>(null)
 
@@ -30,7 +32,7 @@ watch(
       const hunt = await huntsStore.openHunt(id)
       // Not a member (or the hunt is gone): back to the list.
       if (!hunt) await router.replace({ name: 'hunts' })
-      else await listingsStore.open(id)
+      else await Promise.all([listingsStore.open(id), pinsStore.open(id)])
     } catch (e) {
       error.value = (e as Error).message
     }
@@ -38,7 +40,10 @@ watch(
   { immediate: true },
 )
 
-onBeforeUnmount(() => listingsStore.close())
+onBeforeUnmount(() => {
+  listingsStore.close()
+  pinsStore.close()
+})
 </script>
 
 <template>

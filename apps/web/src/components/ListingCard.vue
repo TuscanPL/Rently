@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { formatArea, formatPLN } from '@at/shared'
 import { listingTotal, sortedPhotos, type ListingWithPhotos } from '@/lib/listings'
 import ListingImage from './ListingImage.vue'
+import PinDistances from './PinDistances.vue'
 
 const props = defineProps<{ listing: ListingWithPhotos }>()
 const { t } = useI18n()
@@ -35,6 +36,7 @@ const cover = computed(() => photos.value.find((p) => p.is_cover) ?? null)
         {{ listing.rooms ? t('listing.roomsShort', listing.rooms) : '—' }}
         <template v-if="listing.district"> · {{ listing.district }}</template>
       </p>
+      <PinDistances :listing="listing" compact />
       <span
         v-if="listing.needs_details"
         class="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"

@@ -7,6 +7,7 @@ import { supabase, type Tables } from '@/lib/supabase'
 import { listingTotal, SOURCE_LABELS, sortedPhotos, type ListingWithPhotos } from '@/lib/listings'
 import { useListingsStore } from '@/stores/listings'
 import ListingImage from '@/components/ListingImage.vue'
+import PinDistances from '@/components/PinDistances.vue'
 
 type EventRow = Tables<'listing_events'> & { profiles: { display_name: string } | null }
 
@@ -116,6 +117,8 @@ async function remove() {
     return
   }
   dismissIngestInfo()
+  // Realtime DELETE events can't be filtered by hunt, so drop it from the list here.
+  listingsStore.listings = listingsStore.listings.filter((l) => l.id !== listingId.value)
   await router.replace({ name: 'list', params: { huntId: huntId.value } })
 }
 
@@ -238,6 +241,20 @@ function eventText(e: EventRow) {
             <dd class="font-medium">{{ value }}</dd>
           </template>
         </dl>
+      </section>
+
+      <section class="card" data-testid="distances">
+        <div class="mb-1 flex items-baseline justify-between gap-3">
+          <h3 class="font-semibold">{{ t('distance.title') }}</h3>
+          <RouterLink
+            v-if="listing.lat != null && listing.lng != null"
+            :to="{ name: 'map', params: { huntId }, query: { focus: listingId } }"
+            class="text-sm text-brand-700"
+          >
+            {{ t('distance.showOnMap') }}
+          </RouterLink>
+        </div>
+        <PinDistances :listing="listing" />
       </section>
 
       <section v-if="listing.description" class="card">
