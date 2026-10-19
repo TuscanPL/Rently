@@ -9,6 +9,7 @@ import ListingImage from './ListingImage.vue'
 import StarRating from './StarRating.vue'
 import CriteriaBadges from './CriteriaBadges.vue'
 import PinDistances from './PinDistances.vue'
+import PriceChangeBadge from './PriceChangeBadge.vue'
 
 // One card of the swipe deck. Drag right = yes, left = no, up = maybe; the
 // parent's buttons and arrow keys call fling(). Tapping the photo's left or
@@ -255,6 +256,7 @@ defineExpose({ fling })
         >
           {{ t('listing.adRemoved') }}
         </span>
+        <PriceChangeBadge :hunt-id="listing.hunt_id" :listing-id="listing.id" />
         <CriteriaBadges :listing="listing" />
       </div>
       <PinDistances :listing="listing" compact />
