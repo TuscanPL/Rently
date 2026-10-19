@@ -5,6 +5,7 @@ create extension if not exists pgtap with schema extensions;
 select plan(31);
 
 -- Fixtures (as superuser) ------------------------------------------------------
+insert into public.signup_allowlist (entry) values ('@test.local') on conflict do nothing;
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-0000-4000-a000-000000000001', 'owner@test.local', '{"full_name":"Owner"}'),
   ('11111111-0000-4000-a000-000000000002', 'partner@test.local', '{}'),

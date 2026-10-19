@@ -52,6 +52,17 @@ You need a GitHub account, a free [Supabase](https://supabase.com) account, and 
 9. **Optional, Google sign-in:** create an OAuth client in Google Cloud and enable the Google provider under Authentication → Providers. Then set the `VITE_GOOGLE_AUTH=true` variable.
 10. **Web Push (milestone 6):** generate VAPID keys with `npx web-push generate-vapid-keys` and store them with `supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`.
 
+### Who can sign up
+
+Sign-ups are locked to an allowlist (`public.signup_allowlist`, seeded with the two owners' addresses in `supabase/migrations/20261019000100_email_allowlist.sql`). A trigger on `auth.users` rejects every other email, for both magic links and Google. To let someone in, run this in the Supabase SQL editor:
+
+```sql
+insert into public.signup_allowlist (entry) values ('friend@example.com');  -- one address
+insert into public.signup_allowlist (entry) values ('@example.com');        -- a whole domain
+```
+
+Forks should replace the seeded addresses with their own.
+
 Magic-link emails use Supabase's default sender. It's rate-limited, but that's fine for a handful of users. Open the link in the same browser you requested it from, because sign-in uses PKCE.
 
 ### Keeping the free project awake

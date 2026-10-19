@@ -21,7 +21,8 @@
     "linkSent": "Check your inbox. Open the link on this device to sign in.",
     "google": "Continue with Google",
     "or": "or",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "notAllowed": "This email isn't on the access list. Ask the hunt owner to add it."
   },
   "account": {
     "title": "Account",

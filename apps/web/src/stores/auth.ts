@@ -2,6 +2,13 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { authRedirectUrl, supabase, type Tables } from '@/lib/supabase'
+import { i18n } from '@/i18n'
+
+// Sign-ups are limited by the signup_allowlist table; Auth reports a rejected
+// sign-up as a generic database error.
+export function describeAuthError(message: string): string {
+  return /database error saving new user/i.test(message) ? i18n.global.t('auth.notAllowed') : message
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<Session | null>(null)
@@ -24,7 +31,8 @@ export const useAuthStore = defineStore('auth', () => {
   function init(): Promise<void> {
     ready ??= (async () => {
       const params = new URLSearchParams(window.location.search)
-      authError.value = params.get('error_description')
+      const errorDescription = params.get('error_description')
+      authError.value = errorDescription && describeAuthError(errorDescription)
       const { data } = await supabase.auth.getSession()
       session.value = data.session
       if (params.has('code') || params.has('error')) {
@@ -46,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
       email,
       options: { emailRedirectTo: authRedirectUrl() },
     })
-    if (error) throw error
+    if (error) throw new Error(describeAuthError(error.message))
   }
 
   async function signInWithGoogle() {

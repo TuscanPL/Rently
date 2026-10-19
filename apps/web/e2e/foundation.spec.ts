@@ -44,3 +44,10 @@ test('owner creates a hunt and a partner joins through an invite link', async ({
   await signIn(third, uniqueEmail('cezary'))
   await expect(third.getByText('invalid, expired or already used')).toBeVisible()
 })
+
+test('an email outside the allowlist cannot sign up', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Email').fill(`stranger-${Date.now()}@gmail.com`)
+  await page.getByRole('button', { name: 'Email me a sign-in link' }).click()
+  await expect(page.getByRole('alert')).toContainText("isn't on the access list")
+})

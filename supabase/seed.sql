@@ -2,6 +2,9 @@
 -- Two users share the example hunt. Sign in with either address via magic link;
 -- the email lands in Mailpit at http://127.0.0.1:54324.
 
+-- Local only: let the seed users and the e2e/pgTAP test addresses sign up.
+insert into public.signup_allowlist (entry) values ('@example.com'), ('@test.local');
+
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
