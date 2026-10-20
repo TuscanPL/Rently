@@ -44,6 +44,9 @@ async function fakeNominatim(input: RequestInfo | URL, init?: RequestInit): Prom
   if (locationIq && url.searchParams.get('key') !== 'liq-test') {
     return Response.json({ error: 'Invalid key' }, { status: 401 })
   }
+  if (locationIq && url.searchParams.get('format') !== 'json') {
+    return new Response('<error>Invalid Request</error>', { status: 400 })
+  }
   const q = url.searchParams.get('q') ?? ''
   if (q.includes('boom')) return new Response('oops', { status: 500 })
   if (q.includes('nowhere')) {

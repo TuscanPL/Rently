@@ -107,7 +107,8 @@ export function createGeocoder(opts: GeocoderOptions): Geocoder {
     url.search = new URLSearchParams({
       ...(opts.locationIqKey ? { key: opts.locationIqKey } : {}),
       q: key,
-      format: 'jsonv2',
+      // LocationIQ rejects Nominatim's jsonv2 with a 400; plain json has the same fields we read.
+      format: opts.locationIqKey ? 'json' : 'jsonv2',
       limit: '1',
       countrycodes: 'pl',
       'accept-language': 'pl',
