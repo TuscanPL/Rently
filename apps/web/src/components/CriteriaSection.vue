@@ -142,8 +142,8 @@ async function save() {
 
     <form class="space-y-4" @submit.prevent="save">
       <fieldset :disabled="readOnly" class="space-y-4">
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div class="col-span-2 sm:col-span-1">
+        <div class="space-y-3">
+          <div>
             <label class="label" for="crit-max-total">{{ t('criteria.maxTotal') }}</label>
             <input
               id="crit-max-total"
@@ -217,7 +217,7 @@ async function save() {
           <p class="mt-1 text-xs text-slate-500">{{ t('criteria.districtsHelp') }}</p>
         </div>
 
-        <div class="grid grid-cols-[7rem_1fr] gap-3">
+        <div class="space-y-3">
           <div>
             <label class="label" for="crit-distance">{{ t('criteria.maxDistance') }}</label>
             <input
@@ -230,7 +230,7 @@ async function save() {
               class="input"
             />
           </div>
-          <div class="min-w-0">
+          <div>
             <label class="label" for="crit-pin">{{ t('criteria.distancePin') }}</label>
             <select id="crit-pin" v-model="form.distancePinId" class="input">
               <option value="">{{ t('criteria.noPin') }}</option>
@@ -242,14 +242,14 @@ async function save() {
               </option>
             </select>
           </div>
-          <p v-if="!pinsStore.pins.length" class="col-span-2 text-xs text-slate-500">
+          <p v-if="!pinsStore.pins.length" class="text-xs text-slate-500">
             {{ t('criteria.noPins') }}
           </p>
         </div>
 
         <fieldset>
           <legend class="label">{{ t('criteria.mustHave') }}</legend>
-          <div class="grid gap-2 sm:grid-cols-2">
+          <div class="grid gap-2">
             <label
               v-for="key in ['privateOnly', 'petsAllowed', 'parking', 'balcony'] as const"
               :key="key"
@@ -263,20 +263,20 @@ async function save() {
 
         <fieldset>
           <legend class="label">{{ t('criteria.available') }}</legend>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="text-xs text-slate-500">
+          <div class="space-y-3">
+            <label class="block text-xs text-slate-500">
               {{ t('criteria.availableFrom') }}
               <input v-model="form.availableFrom" type="date" class="input mt-1" />
             </label>
-            <label class="text-xs text-slate-500">
+            <label class="block text-xs text-slate-500">
               {{ t('criteria.availableTo') }}
               <input v-model="form.availableTo" type="date" class="input mt-1" />
             </label>
           </div>
         </fieldset>
 
-        <div class="flex items-center gap-3">
-          <label class="flex-1 text-sm font-medium text-slate-700" for="crit-elevator">
+        <div>
+          <label class="label" for="crit-elevator">
             {{ t('criteria.elevatorAbove') }}
           </label>
           <input
@@ -286,7 +286,7 @@ async function save() {
             min="0"
             step="1"
             inputmode="numeric"
-            class="input w-20"
+            class="input"
           />
         </div>
 

@@ -102,7 +102,7 @@ async function remove(pin: Pin) {
       <p class="text-sm font-semibold">
         {{ editing === 'new' ? t('pins.addTitle') : t('pins.editTitle') }}
       </p>
-      <div class="grid grid-cols-[1fr_auto] gap-3">
+      <div class="space-y-3">
         <div>
           <label class="label" for="pin-label">{{ t('pins.label') }}</label>
           <input
