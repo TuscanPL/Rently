@@ -71,7 +71,7 @@ You need a GitHub account, a free [Supabase](https://supabase.com) account, and 
 
 ### Who can sign up
 
-Sign-ups are locked to an allowlist (`public.signup_allowlist`, seeded with the two owners' addresses in `supabase/migrations/20261019000100_email_allowlist.sql`). A trigger on `auth.users` rejects every other email, for both magic links and Google. To let someone in, run this in the Supabase SQL editor:
+Sign-ups are locked to an allowlist (`public.signup_allowlist`, created empty by `supabase/migrations/20261019000100_email_allowlist.sql`, so nobody can sign up until you add yourself). A trigger on `auth.users` rejects every other email, for both magic links and Google. After the first deploy, add your own addresses; to let someone in later, do the same. Run this in the Supabase SQL editor:
 
 ```sql
 insert into public.signup_allowlist (entry) values ('friend@example.com');  -- one address

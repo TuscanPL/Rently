@@ -1,6 +1,7 @@
 -- Sign-up allowlist: only listed emails can create an account (magic link or Google).
 -- An entry is either a full address or "@domain" for a whole domain.
 -- Manage it from the SQL editor; clients can't read or write this table.
+-- It starts empty: add the owners' addresses after the first deploy (see README).
 
 create table public.signup_allowlist (
   entry text primary key check (entry = lower(entry) and entry like '%@%'),
@@ -8,10 +9,6 @@ create table public.signup_allowlist (
 );
 alter table public.signup_allowlist enable row level security;
 revoke all on public.signup_allowlist from anon, authenticated;
-
-insert into public.signup_allowlist (entry) values
-  ('owner@example.org'),
-  ('partner@example.org');
 
 create function public.enforce_signup_allowlist()
 returns trigger
