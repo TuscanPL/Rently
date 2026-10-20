@@ -1,0 +1,37 @@
+name: Refresh listings
+
+on:
+  schedule:
+    # 04:00 UTC = 06:00 Warsaw in summer, 05:00 in winter.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Each call re-checks a small batch within the edge function's time limit
+      # and reports how many listings are still due. Call again while some are
+      # left, up to MAX_CALLS times; whatever remains waits for tomorrow. The
+      # first call also counts as project activity, so the free project stays awake.
+      - name: Call refresh-listings
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MAX_CALLS: 8
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 "$MAX_CALLS"); do
+            if ! summary=$(curl --fail-with-body -sS -X POST --max-time 170 \
+              -H "x-cron-secret: $CRON_SECRET" \
+              "https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/refresh-listings"); then
+              echo "Call $i failed: $summary"
+              exit 1
+            fi
+            echo "Call $i: $summary"
+            remaining=$(echo "$summary" | jq -r '.remaining // 0')
+            checked=$(echo "$summary" | jq -r '.checked // 0')
+            # Stop when done, or when a call made no progress (sites busy).
+            [ "$remaining" -gt 0 ] && [ "$checked" -gt 0 ] || break
+          done

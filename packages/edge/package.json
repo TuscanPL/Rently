@@ -1,0 +1,27 @@
+{
+  "name": "@at/edge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Edge function logic. Bundled into supabase/functions/_shared/edge.js for Deno.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=../../supabase/functions/_shared/edge.js --legal-comments=none --minify",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@at/parsers": "workspace:*",
+    "@at/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.118.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "esbuild": "^0.25.0",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

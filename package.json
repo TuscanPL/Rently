@@ -1,0 +1,27 @@
+{
+  "name": "apartment-together",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @at/web dev",
+    "build": "pnpm --filter @at/web build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > packages/shared/src/database.ts && prettier --write packages/shared/src/database.ts",
+    "format": "prettier --write .",
+    "build:functions": "pnpm --filter @at/edge build",
+    "functions:serve": "pnpm build:functions && supabase functions serve --env-file supabase/functions/.env"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10",
+    "supabase": "^2.121.0",
+    "typescript": "5.9.3"
+  }
+}

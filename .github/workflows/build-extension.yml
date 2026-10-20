@@ -1,0 +1,47 @@
+name: Build extension
+
+# Push a tag like ext-v0.2.0 to build the Chrome and Firefox zips and attach
+# them to a GitHub release. The tag's version goes into manifest.json.
+on:
+  push:
+    tags: ['ext-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @at/extension test
+      - name: Version from tag
+        # ext-v1.2.3 → 1.2.3; manual runs keep package.json's version.
+        if: startsWith(github.ref, 'refs/tags/ext-v')
+        run: echo "EXT_VERSION=${GITHUB_REF_NAME#ext-v}" >> "$GITHUB_ENV"
+      - run: pnpm --filter @at/extension zip
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+          # Where "Open in the app" links go; defaults to this repo's Pages URL.
+          VITE_WEB_APP_URL: ${{ vars.VITE_WEB_APP_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
+          EXT_GECKO_ID: ${{ vars.EXT_GECKO_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension
+          path: apps/extension/release/*.zip
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/ext-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "Extension ${GITHUB_REF_NAME#ext-v}" --notes "Chrome: unzip and load unpacked. Firefox: sign the zip as an unlisted add-on (see README)."
+          gh release upload "$GITHUB_REF_NAME" apps/extension/release/*.zip --clobber

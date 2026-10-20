@@ -1,0 +1,35 @@
+{
+  "name": "@at/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm build:chrome && pnpm build:firefox",
+    "build:chrome": "vite build --mode chrome",
+    "build:firefox": "vite build --mode firefox",
+    "zip": "pnpm build && node scripts/zip.mjs",
+    "sign:firefox": "pnpm dlx web-ext@8 sign --source-dir dist/firefox --artifacts-dir release --channel unlisted",
+    "typecheck": "vue-tsc -b",
+    "test": "vitest run --passWithNoTests --dir src",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@at/parsers": "workspace:*",
+    "@at/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.118.0",
+    "vue": "^3.5.44"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/chrome": "^0.3.5",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/tsconfig": "^0.9.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5",
+    "vue-tsc": "^3.3.13"
+  }
+}
