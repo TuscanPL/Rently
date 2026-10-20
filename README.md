@@ -51,7 +51,7 @@ You need a GitHub account, a free [Supabase](https://supabase.com) account, and 
    - Redirect URLs: `https://<user>.github.io/<repo>/**` and `http://localhost:5173/**`
 8. **Deploy:** push to `main`, or run the *Deploy Supabase* and *Deploy web* workflows by hand from the Actions tab. The app goes live at `https://<user>.github.io/<repo>/`.
 9. **Optional, Google sign-in:** create an OAuth client in Google Cloud and enable the Google provider under Authentication → Providers. Then set the `VITE_GOOGLE_AUTH=true` variable.
-10. **Optional, geocoding contact:** the `geocode` function looks addresses up on OpenStreetMap's Nominatim (cached, at most one request a second). Its usage policy asks for a contact address: `supabase secrets set NOMINATIM_EMAIL=you@example.com`.
+10. **Geocoding key:** address search and placing new listings on the map need a geocoder. Nominatim (OpenStreetMap) refuses requests from Supabase's edge network with 403, so deployed functions use [LocationIQ](https://locationiq.com) (free tier: 5,000 requests a day, 2 a second), which has the same API. Create a free access token and set it: `supabase secrets set LOCATIONIQ_KEY=<token>`. Without the key the functions fall back to Nominatim, which works for local development; there you can set `NOMINATIM_EMAIL=you@example.com` as its usage policy asks.
 11. **Web Push.** Without these steps the in-app notification feed (the 🔔) still works; only push to phones and desktops is off.
     1. Generate VAPID keys once: `npx web-push generate-vapid-keys`. Store them as function secrets, with a contact for push services, and pick a random shared secret for the database → function call:
        ```sh

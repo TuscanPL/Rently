@@ -10,11 +10,12 @@ Deno.serve(
     supabaseUrl,
     anonKey: Deno.env.get('SUPABASE_ANON_KEY')!,
     // Listings without coordinates get geocoded from their address; kept short so
-    // a busy or unreachable Nominatim never holds up adding a listing for long.
+    // a busy or unreachable geocoder never holds up adding a listing for long.
     geocode: createGeocoder({
       supabaseUrl,
       serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       nominatimEmail: Deno.env.get('NOMINATIM_EMAIL') || undefined,
+      locationIqKey: Deno.env.get('LOCATIONIQ_KEY') || undefined,
       maxWaitMs: 2500,
       timeoutMs: 4000,
     }),

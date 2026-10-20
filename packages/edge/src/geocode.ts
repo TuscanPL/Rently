@@ -9,6 +9,10 @@ type Db = SupabaseClient<Database>
 export const NOMINATIM_HOST = 'nominatim.openstreetmap.org'
 // Nominatim's usage policy: at most 1 request per second, and an identifying User-Agent.
 const NOMINATIM_INTERVAL_MS = 1100
+// Nominatim answers Supabase's edge network with 403, so deployed functions use
+// LocationIQ: the same API and response shape, with a key. Free tier: 2 requests a second.
+export const LOCATIONIQ_HOST = 'eu1.locationiq.com'
+const LOCATIONIQ_INTERVAL_MS = 600
 const USER_AGENT = 'ApartmentTogether/1.0 (shared apartment-hunting app; user-entered addresses)'
 const HIT_TTL_MS = 180 * 24 * 3600_000
 // Misses are cached briefly so a repeated junk query doesn't hit Nominatim every time.
@@ -32,6 +36,8 @@ export interface GeocoderOptions {
   serviceRoleKey: string
   /** Sent as Nominatim's `email` parameter, per its usage policy. */
   nominatimEmail?: string
+  /** When set, look addresses up on LocationIQ instead of Nominatim. */
+  locationIqKey?: string
   /** Injectable for tests: OpenStreetMap isn't reachable from CI. */
   fetchExternal?: typeof fetch
   sleep?: (ms: number) => Promise<void>
@@ -59,6 +65,9 @@ const nominatimSchema = z.array(
 export function createGeocoder(opts: GeocoderOptions): Geocoder {
   const fetchExternal = opts.fetchExternal ?? fetch
   const sleep = opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)))
+  const provider = opts.locationIqKey
+    ? { host: LOCATIONIQ_HOST, path: '/v1/search', interval: LOCATIONIQ_INTERVAL_MS }
+    : { host: NOMINATIM_HOST, path: '/search', interval: NOMINATIM_INTERVAL_MS }
   const admin: Db = createClient<Database>(opts.supabaseUrl, opts.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
@@ -87,14 +96,16 @@ export function createGeocoder(opts: GeocoderOptions): Geocoder {
     }
 
     const { data: waitMs, error } = await admin.rpc('claim_fetch_slot', {
-      p_domain: NOMINATIM_HOST,
-      p_interval_ms: NOMINATIM_INTERVAL_MS,
+      p_domain: provider.host,
+      p_interval_ms: provider.interval,
     })
+    if (error) console.error('geocode: claim_fetch_slot failed', error.message)
     if (error || (waitMs ?? 0) > (opts.maxWaitMs ?? 5000)) return { status: 'unavailable' }
     if (waitMs) await sleep(waitMs)
 
-    const url = new URL(`https://${NOMINATIM_HOST}/search`)
+    const url = new URL(`https://${provider.host}${provider.path}`)
     url.search = new URLSearchParams({
+      ...(opts.locationIqKey ? { key: opts.locationIqKey } : {}),
       q: key,
       format: 'jsonv2',
       limit: '1',
@@ -109,12 +120,24 @@ export function createGeocoder(opts: GeocoderOptions): Geocoder {
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
         signal: AbortSignal.timeout(opts.timeoutMs ?? 8000),
       })
-      if (!res.ok) return { status: 'unavailable' }
-      const parsed = nominatimSchema.safeParse(await res.json())
-      if (!parsed.success) return { status: 'unavailable' }
-      const first = parsed.data[0]
-      hit = first ? { lat: first.lat, lng: first.lon, displayName: first.display_name } : null
-    } catch {
+      // LocationIQ answers "no match" with a 404 instead of an empty list.
+      if (res.status === 404 && opts.locationIqKey) {
+        hit = null
+      } else {
+        if (!res.ok) {
+          console.error(`geocode: ${provider.host} answered ${res.status}`)
+          return { status: 'unavailable' }
+        }
+        const parsed = nominatimSchema.safeParse(await res.json())
+        if (!parsed.success) {
+          console.error(`geocode: unexpected response from ${provider.host}`)
+          return { status: 'unavailable' }
+        }
+        const first = parsed.data[0]
+        hit = first ? { lat: first.lat, lng: first.lon, displayName: first.display_name } : null
+      }
+    } catch (e) {
+      console.error(`geocode: ${provider.host} request failed`, String(e))
       return { status: 'unavailable' }
     }
 

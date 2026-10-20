@@ -37,10 +37,20 @@ const requests: { url: URL; headers: Headers }[] = []
 async function fakeNominatim(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = new URL(input.toString())
   requests.push({ url, headers: new Headers(init?.headers) })
-  if (url.hostname !== 'nominatim.openstreetmap.org') return new Response('nope', { status: 403 })
+  const locationIq = url.hostname === 'eu1.locationiq.com'
+  if (!locationIq && url.hostname !== 'nominatim.openstreetmap.org') {
+    return new Response('nope', { status: 403 })
+  }
+  if (locationIq && url.searchParams.get('key') !== 'liq-test') {
+    return Response.json({ error: 'Invalid key' }, { status: 401 })
+  }
   const q = url.searchParams.get('q') ?? ''
   if (q.includes('boom')) return new Response('oops', { status: 500 })
-  if (q.includes('nowhere')) return Response.json([])
+  if (q.includes('nowhere')) {
+    return locationIq
+      ? Response.json({ error: 'Unable to geocode' }, { status: 404 })
+      : Response.json([])
+  }
   return Response.json([
     { lat: '52.1812', lon: '21.0021', display_name: `Somewhere for ${q}`, place_id: 1 },
   ])
@@ -156,6 +166,17 @@ describe.skipIf(!stackUp)('geocode', () => {
     const impatient = createGeocoder({ ...options, maxWaitMs: 0 })
     await impatient(`c ${run}`)
     expect(await impatient(`d ${run}`)).toEqual({ status: 'unavailable' })
+  })
+
+  it('uses LocationIQ when a key is set, reading its 404 as no match', async () => {
+    const liq = createGeocoder({ ...options, locationIqKey: 'liq-test' })
+    expect(await liq(`liq ${run}`)).toMatchObject({ status: 'found', cached: false })
+    expect(requests.at(-1)!.url.hostname).toBe('eu1.locationiq.com')
+    expect(requests.at(-1)!.url.searchParams.get('key')).toBe('liq-test')
+    expect(await liq(`nowhere liq ${run}`)).toEqual({ status: 'not_found', cached: false })
+    expect(await liq(`nowhere liq ${run}`)).toEqual({ status: 'not_found', cached: true })
+    const badKey = createGeocoder({ ...options, locationIqKey: 'wrong' })
+    expect(await badKey(`liq bad ${run}`)).toEqual({ status: 'unavailable' })
   })
 
   it('rejects bad bodies and missing auth', async () => {

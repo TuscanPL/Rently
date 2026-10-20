@@ -10,7 +10,7 @@ The first users are two people renting in Warsaw. The app is multi-user from the
 ## Stack
 - **Frontend:** Vue 3 + TypeScript + Vite, Vue Router, Pinia, Tailwind CSS. PWA via `vite-plugin-pwa`. It is a **static SPA hosted on GitHub Pages**, with no server of its own.
 - **Backend:** **Supabase free tier**. Postgres with RLS everywhere, Auth (magic link + Google), Realtime, Storage, and Edge Functions (Deno/TS). Every piece of server logic is either an edge function or a Postgres RPC.
-- **Maps:** Leaflet + OpenStreetMap tiles. Geocode with Nominatim from an edge function, with caching and rate limiting.
+- **Maps:** Leaflet + OpenStreetMap tiles. Geocode from an edge function, with caching and rate limiting: LocationIQ in production (Nominatim blocks Supabase's edge network), Nominatim locally.
 - **Browser extension:** Manifest V3, built for Chrome and Firefox.
 - **Monorepo (pnpm workspaces):**
   ```
