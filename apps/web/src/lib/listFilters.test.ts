@@ -100,9 +100,6 @@ describe('applyListPrefs: sort', () => {
   it('sorts by cost per m²', () => {
     expect(ids({ sort: 'perM2' })).toEqual(['a', 'b', 'c'])
   })
-  it('sorts by combined score, best first', () => {
-    expect(ids({ sort: 'score' })).toEqual(['b', 'a', 'c'])
-  })
   it('sorts by distance to the pin, unlocated last', () => {
     expect(ids({ sort: 'distance' }, pin('p', 52.26, 21.0))).toEqual(['b', 'a', 'c'])
     expect(ids({ sort: 'distance' }, pin('p', 52.19, 21.0))).toEqual(['a', 'b', 'c'])

@@ -45,6 +45,8 @@ const bodySchema = z.object({
   text: z.string().max(20_000).optional(),
   fields: z.record(z.string(), z.unknown()).optional(),
   photoPaths: z.array(z.string()).max(30).optional(),
+  /** Where `parsed` came from: the extension (default) or a Browse result read by search-refresh. */
+  via: z.enum(['extension', 'browse']).optional(),
 })
 type IngestBody = z.infer<typeof bodySchema>
 
@@ -124,7 +126,22 @@ async function findExisting(ctx: Ctx, canonicalUrl: string) {
   return merged
 }
 
-function existingResponse(row: { id: string; needs_details: boolean }): IngestResponse {
+/** Adding an ad means the member likes it: it counts as their yes, unless they already voted. */
+async function likeIt(ctx: Ctx, listingId: string) {
+  const { error } = await ctx.db
+    .from('votes')
+    .upsert(
+      { listing_id: listingId, user_id: ctx.userId, swipe: 'yes' },
+      { onConflict: 'listing_id,user_id', ignoreDuplicates: true },
+    )
+  if (error) console.error('ingest: could not record the vote', error.message)
+}
+
+async function existingResponse(
+  ctx: Ctx,
+  row: { id: string; needs_details: boolean },
+): Promise<IngestResponse> {
+  await likeIt(ctx, row.id)
   return {
     listingId: row.id,
     existing: true,
@@ -140,7 +157,7 @@ async function ingestUrl(ctx: Ctx): Promise<IngestResponse> {
   let url = new URL(ctx.body.url!)
   let canonical = canonicalizeUrl(url.toString())
   const known = await findExisting(ctx, canonical)
-  if (known) return existingResponse(known)
+  if (known) return existingResponse(ctx, known)
 
   let result: ParseResult | undefined
   let fetched = false
@@ -152,7 +169,7 @@ async function ingestUrl(ctx: Ctx): Promise<IngestResponse> {
       url = page.finalUrl
       canonical = canonicalizeUrl(url.toString())
       const landed = await findExisting(ctx, canonical)
-      if (landed) return existingResponse(landed)
+      if (landed) return existingResponse(ctx, landed)
     }
     result = parseListingHtml(page.html, url)
   }
@@ -165,12 +182,12 @@ async function ingestParsed(ctx: Ctx): Promise<IngestResponse> {
   const url = new URL(String(raw.url ?? ctx.body.url ?? ''))
   const canonical = canonicalizeUrl(url.toString())
   const known = await findExisting(ctx, canonical)
-  if (known) return existingResponse(known)
+  if (known) return existingResponse(ctx, known)
   const result = buildResult(url, raw as Partial<ParsedListing>)
   return saveListing(ctx, result, {
     url: url.toString(),
     canonical,
-    method: 'extension',
+    method: ctx.body.via ?? 'extension',
     fetched: false,
   })
 }
@@ -183,7 +200,7 @@ async function ingestText(ctx: Ctx): Promise<IngestResponse> {
   const canonical = url ? canonicalizeUrl(url) : null
   if (canonical) {
     const known = await findExisting(ctx, canonical)
-    if (known) return existingResponse(known)
+    if (known) return existingResponse(ctx, known)
   }
   const missingFields = DETAIL_FIELDS.filter((f) => listing[f] == null)
   const result: ParseResult = {
@@ -265,7 +282,7 @@ async function saveListing(
     // Someone added the same ad a moment ago.
     if (error.code === '23505' && opts.canonical) {
       const known = await findExisting(ctx, opts.canonical)
-      if (known) return existingResponse(known)
+      if (known) return existingResponse(ctx, known)
     }
     throw new HttpError(500, `Could not save listing: ${error.message}`)
   }
@@ -285,6 +302,8 @@ async function saveListing(
         .from('listing_price_history')
         .insert({ listing_id: listingId, rent: row.rent, admin_fee: row.admin_fee }),
   ])
+
+  await likeIt(ctx, listingId)
 
   const { data: dupes } = await db.rpc('listing_possible_duplicates', { p_listing_id: listingId })
   return {

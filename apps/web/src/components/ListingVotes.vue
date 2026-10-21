@@ -2,14 +2,12 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Swipe } from '@at/shared'
-import { hasRatings, SWIPE_ICONS } from '@/lib/votes'
+import { SWIPE_ICONS } from '@/lib/votes'
 import { useVotesStore } from '@/stores/votes'
 import MemberVotes from './MemberVotes.vue'
-import StarRating from './StarRating.vue'
 import ReconsiderSheet from './ReconsiderSheet.vue'
 
-// The listing detail's Votes section: my swipe and stars, everyone's votes
-// (stars after reveal), the combined score and Reconsider.
+// The listing detail's Votes section: my swipe, everyone's votes and Reconsider.
 const props = defineProps<{ listingId: string }>()
 const { t } = useI18n()
 const votes = useVotesStore()
@@ -32,20 +30,16 @@ const swipeClass: Record<Swipe, string> = {
 }
 const order: Swipe[] = ['no', 'maybe', 'yes']
 
-async function save(swipe: Swipe, stars: number | null) {
+async function save(swipe: Swipe) {
   busy.value = true
   error.value = null
   try {
-    await votes.setVote(props.listingId, swipe, stars)
+    await votes.setVote(props.listingId, swipe)
   } catch (e) {
     error.value = (e as Error).message
   } finally {
     busy.value = false
   }
-}
-
-function setStars(stars: number | null) {
-  if (summary.value?.my_swipe) void save(summary.value.my_swipe, stars)
 }
 
 async function submitReconsider(note: string) {
@@ -80,33 +74,16 @@ async function submitReconsider(note: string) {
           "
           :aria-pressed="summary.my_swipe === s"
           :disabled="busy"
-          @click="save(s, summary.my_stars)"
+          @click="save(s)"
         >
           {{ SWIPE_ICONS[s] }} {{ t(`votes.swipe.${s}`) }}
         </button>
-      </div>
-      <div class="mt-2 flex items-center justify-between gap-2">
-        <StarRating
-          :model-value="summary.my_stars"
-          :disabled="busy || !summary.my_swipe"
-          @update:model-value="setStars"
-        />
-        <span v-if="!summary.my_swipe" class="text-xs text-slate-500">
-          {{ t('votes.rateAfterSwipe') }}
-        </span>
       </div>
     </div>
 
     <div class="space-y-2">
       <p class="label">{{ t('votes.everyone') }}</p>
       <MemberVotes :summary="summary" />
-      <p v-if="!summary.votes_revealed" class="text-xs text-slate-500">{{ t('votes.hidden') }}</p>
-      <p v-if="hasRatings(summary)" class="text-sm" data-testid="combined-score">
-        <span class="font-semibold"
-          >★ {{ t('votes.score', { score: summary.combined_score }) }}</span
-        >
-        <span v-if="summary.is_match" class="text-slate-500"> · {{ t('votes.matchBonus') }}</span>
-      </p>
       <p v-if="summary.is_match" class="font-semibold text-emerald-700">{{ t('toast.match') }}</p>
     </div>
 

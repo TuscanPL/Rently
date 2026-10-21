@@ -10,7 +10,7 @@ import { useVotesStore } from '@/stores/votes'
 import { MAX_COMPARE } from '@/lib/compare'
 import { PIN_ICONS } from '@/lib/geo'
 import { STATUS_CLASSES } from '@/lib/pipeline'
-import { hasRatings, SWIPE_ICONS } from '@/lib/votes'
+import { SWIPE_ICONS } from '@/lib/votes'
 import {
   activeFilterCount,
   applyListPrefs,
@@ -271,12 +271,6 @@ function compare() {
                 class="rounded-full bg-violet-100 px-2 py-0.5 font-semibold text-violet-800"
               >
                 🏠 {{ t('map.legend.match') }}
-              </span>
-              <span
-                v-if="hasRatings(votes.summaries[l.id]!)"
-                class="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800"
-              >
-                ★ {{ t('votes.score', { score: votes.summaries[l.id]!.combined_score }) }}
               </span>
               <span v-if="votes.summaries[l.id]!.my_swipe" class="text-slate-500">
                 {{ t('votes.mine') }}: {{ SWIPE_ICONS[votes.summaries[l.id]!.my_swipe!] }}

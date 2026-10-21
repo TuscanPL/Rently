@@ -121,8 +121,7 @@ test('partners see new listings and matches in their notification feed, live', a
   await expect(feed.getByTestId('notification')).toHaveCount(1)
   await expect(feed).toContainText(`${aName} added Flat with a view`)
 
-  // A swipes yes; B's yes completes the match, so A (not B) gets a match notification.
-  await swipeYes(a)
+  // Adding it was A's yes; B's yes completes the match, so A (not B) gets a match notification.
   await b.getByTestId('notification').click()
   await expect(b.getByRole('heading', { name: 'Flat with a view' })).toBeVisible()
   await expect(b.getByTestId('unread-count')).toBeHidden()

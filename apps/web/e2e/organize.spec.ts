@@ -111,14 +111,13 @@ test('criteria badges, list sort and filters, pipeline, viewing note and live co
   await page.getByRole('button', { name: 'Done' }).click()
   await snap(page, 'list')
 
-  // The deck card carries the same badges.
-  await page.getByRole('link', { name: 'Deck' }).click()
-  const deckCard = page.getByTestId('deck-card')
+  // The deck card carries the same badges. Adding them was this member's yes,
+  // so they're in the partner's deck.
+  const b = await withPartner(browser, page)
+  const deckCard = b.getByTestId('deck-card')
   await expect(deckCard).toContainText('Small pricey flat')
   await expect(deckCard.getByTestId('criteria-badge').first()).toHaveText('Over budget +400 zł')
-  await snap(page, 'deck-badges')
-
-  const b = await withPartner(browser, page)
+  await snap(b, 'deck-badges')
 
   // Pipeline: book a viewing with a time and download it as .ics.
   await page.getByRole('link', { name: 'Pipeline' }).click()

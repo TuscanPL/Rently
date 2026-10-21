@@ -878,6 +878,8 @@ export type Database = {
           address: string | null
           admin_fee: number | null
           area_m2: number | null
+          detail: Json | null
+          detail_fetched_at: string | null
           district: string | null
           external_id: string
           first_seen_at: string
@@ -900,6 +902,8 @@ export type Database = {
           address?: string | null
           admin_fee?: number | null
           area_m2?: number | null
+          detail?: Json | null
+          detail_fetched_at?: string | null
           district?: string | null
           external_id: string
           first_seen_at?: string
@@ -921,6 +925,8 @@ export type Database = {
           address?: string | null
           admin_fee?: number | null
           area_m2?: number | null
+          detail?: Json | null
+          detail_fetched_at?: string | null
           district?: string | null
           external_id?: string
           first_seen_at?: string

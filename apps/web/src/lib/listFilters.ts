@@ -12,7 +12,7 @@ import { readLocal, writeLocal } from './storage'
 
 // The List tab's sort and filters, as pure functions so they're easy to test.
 
-export const SORT_KEYS = ['added', 'total', 'perM2', 'score', 'distance'] as const
+export const SORT_KEYS = ['added', 'total', 'perM2', 'distance'] as const
 export type SortKey = (typeof SORT_KEYS)[number]
 
 export const VOTE_FILTERS = ['any', 'yes', 'maybe', 'no', 'unvoted'] as const
@@ -127,16 +127,12 @@ function sortValue(l: ListingWithPhotos, p: ListPrefs, ctx: ListContext): number
       return totalMonthly(costs(l))
     case 'perM2':
       return costPerM2({ ...costs(l), areaM2: l.area_m2 })
-    case 'score': {
-      const score = ctx.summaries[l.id]?.combined_score
-      return score == null ? null : -score
-    }
     case 'distance':
       return distanceBetween(l, ctx.pin)
   }
 }
 
-/** Filters, then sorts: newest, cheapest, best score or nearest first. */
+/** Filters, then sorts: newest, cheapest or nearest first. */
 export function applyListPrefs(
   listings: ListingWithPhotos[],
   prefs: ListPrefs,

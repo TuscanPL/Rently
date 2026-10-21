@@ -94,7 +94,8 @@ test('pins, distances, map and compare', async ({ page }) => {
   await page.getByRole('link', { name: 'Map' }).click()
   await expect(page.locator('path.listing-marker')).toHaveCount(2)
   await expect(page.locator('.pin-marker')).toHaveCount(1)
-  await expect(page.locator('path.listing-marker--unvoted')).toHaveCount(2)
+  // Alone in the hunt, the listings you added are your yes, so they show as matches.
+  await expect(page.locator('path.listing-marker--match')).toHaveCount(2)
   await expect(page.getByTestId('unlocated')).toBeHidden()
   await expect(page.getByText('OpenStreetMap')).toBeVisible()
   await snap(page, 'map')

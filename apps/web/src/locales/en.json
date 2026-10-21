@@ -58,7 +58,6 @@
   "settings": {
     "title": "Hunt settings",
     "details": "Details",
-    "reveal": "Hide each member's stars until everyone has voted",
     "members": "Members",
     "owner": "Owner",
     "member": "Member",
@@ -270,7 +269,6 @@
     "undo": "Undo last swipe",
     "details": "Details",
     "perMonth": "per month, czynsz + opłaty",
-    "yourRating": "Your rating (optional)",
     "rejectedBy": "✗ Rejected by {names}",
     "reconsiderAsk": "{name} asks you to take another look",
     "stillNo": "Still no",
@@ -291,18 +289,12 @@
     "title": "Votes",
     "mine": "Your vote",
     "everyone": "Everyone",
-    "stars": "Rating",
-    "rate": "{n} star | {n} stars",
     "swipe": {
       "yes": "Yes",
       "maybe": "Maybe",
       "no": "No"
     },
-    "notYet": "not voted",
-    "hidden": "Stars stay hidden until everyone has voted.",
-    "rateAfterSwipe": "Vote first, then rate.",
-    "score": "Score {score}",
-    "matchBonus": "includes +1 for a match"
+    "notYet": "not voted"
   },
   "reconsider": {
     "button": "Reconsider",
@@ -319,7 +311,7 @@
     "empty": "No matches yet. A listing lands here once everyone swipes yes."
   },
   "disagreements": {
-    "empty": "No disagreements. Listings show up here when one of you says yes and another says no, or your stars are 2+ apart."
+    "empty": "No disagreements. Listings show up here when one of you says yes and another says no."
   },
   "maybes": {
     "empty": "No maybes. Swipe up on a card to park it here."
@@ -350,7 +342,6 @@
       "added": "Newest",
       "total": "Total cost",
       "perM2": "Cost per m²",
-      "score": "Score",
       "distance": "Distance"
     },
     "pin": "Distance to",
@@ -633,12 +624,14 @@
     "rentPlusFee": "{rent} + {fee}",
     "listed": "Listed",
     "openOtodom": "Open on Otodom",
-    "sheetHelp": "This is what Otodom's results show. Add it to the hunt for the full ad, transit times and voting.",
+    "sheetHelp": "Adding it to the hunt counts as your yes. Your partner gets it in their deck.",
     "footer": "Nothing is fetched in the background: pull down for the newest ads, scroll down for more.",
     "found": "No ads found | Found 1 ad | Found {n} ads",
     "loadMore": "Load more (page {page} of {total})",
     "loadingMore": "Loading the next page…",
-    "end": "That's all Otodom has for this search."
+    "end": "That's all Otodom has for this search.",
+    "loadingAd": "Loading the full ad from Otodom…",
+    "adError": "Couldn't load the full ad ({error}). Showing what the results list has."
   },
   "searchForm": {
     "mode": {

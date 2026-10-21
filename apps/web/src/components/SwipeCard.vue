@@ -6,7 +6,6 @@ import { formatArea, formatPLN, type Swipe } from '@at/shared'
 import { listingTotal, sortedPhotos } from '@/lib/listings'
 import type { DeckCard } from '@/lib/votes'
 import ListingImage from './ListingImage.vue'
-import StarRating from './StarRating.vue'
 import CriteriaBadges from './CriteriaBadges.vue'
 import PinDistances from './PinDistances.vue'
 import PriceChangeBadge from './PriceChangeBadge.vue'
@@ -15,7 +14,7 @@ import PriceChangeBadge from './PriceChangeBadge.vue'
 // parent's buttons and arrow keys call fling(). Tapping the photo's left or
 // right half pages through the photos.
 const props = defineProps<{ card: DeckCard; interactive: boolean }>()
-const emit = defineEmits<{ swipe: [swipe: Swipe, stars: number | null]; reconsider: [] }>()
+const emit = defineEmits<{ swipe: [swipe: Swipe]; reconsider: [] }>()
 const { t } = useI18n()
 
 const THRESHOLD = 100
@@ -24,7 +23,6 @@ const listing = computed(() => props.card.listing)
 const photos = computed(() => sortedPhotos(listing.value.listing_photos))
 const cover = computed(() => photos.value.find((p) => p.is_cover) ?? null)
 const photoIndex = ref(0)
-const stars = ref<number | null>(null)
 
 const dx = ref(0)
 const dy = ref(0)
@@ -37,7 +35,6 @@ watch(
   () => props.card.listing_id,
   () => {
     photoIndex.value = 0
-    stars.value = null
     dx.value = dy.value = 0
     leaving.value = null
   },
@@ -117,7 +114,7 @@ function fling(swipe: Swipe) {
   if (swipe === 'yes') dx.value = w * 1.2
   else if (swipe === 'no') dx.value = -w * 1.2
   else dy.value = -window.innerHeight
-  setTimeout(() => emit('swipe', swipe, stars.value), 280)
+  setTimeout(() => emit('swipe', swipe), 280)
 }
 
 defineExpose({ fling })
@@ -260,10 +257,6 @@ defineExpose({ fling })
         <CriteriaBadges :listing="listing" />
       </div>
       <PinDistances :listing="listing" compact />
-      <div class="flex items-center justify-between">
-        <span class="text-xs text-slate-500">{{ t('deck.yourRating') }}</span>
-        <StarRating v-model="stars" size="sm" :disabled="!interactive" />
-      </div>
     </div>
   </article>
 </template>
