@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useHuntsStore } from '@/stores/hunts'
 import { useListingsStore } from '@/stores/listings'
 import { usePinsStore } from '@/stores/pins'
+import { useRoutesStore } from '@/stores/routes'
 import { useVotesStore } from '@/stores/votes'
 import MatchToast from '@/components/MatchToast.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
@@ -15,6 +16,7 @@ const router = useRouter()
 const huntsStore = useHuntsStore()
 const listingsStore = useListingsStore()
 const pinsStore = usePinsStore()
+const routesStore = useRoutesStore()
 const votesStore = useVotesStore()
 // The swipe screen has its own add button next to the swipe controls.
 const showAdd = computed(() => route.name === 'list')
@@ -37,7 +39,13 @@ watch(
       const hunt = await huntsStore.openHunt(id)
       // Not a member (or the hunt is gone): back to the list.
       if (!hunt) await router.replace({ name: 'hunts' })
-      else await Promise.all([listingsStore.open(id), pinsStore.open(id), votesStore.open(id)])
+      else
+        await Promise.all([
+          listingsStore.open(id),
+          pinsStore.open(id),
+          votesStore.open(id),
+          routesStore.open(id),
+        ])
     } catch (e) {
       error.value = (e as Error).message
     }
@@ -45,9 +53,28 @@ watch(
   { immediate: true },
 )
 
+// Public transport trips are looked up once per listing → pin and stored. Ask
+// for any that are missing whenever a located listing or a pin appears or moves.
+const missingTrips = computed(() => {
+  if (!routesStore.huntId) return 0
+  let missing = 0
+  for (const l of listingsStore.listings) {
+    if (l.lat == null || l.lng == null) continue
+    for (const p of pinsStore.pins) if (!routesStore.get(l.id, p.id)) missing++
+  }
+  return missing
+})
+let fillTimer: ReturnType<typeof setTimeout> | undefined
+watch(missingTrips, (n) => {
+  clearTimeout(fillTimer)
+  if (n > 0) fillTimer = setTimeout(() => void routesStore.fillMissing(), 1500)
+})
+
 onBeforeUnmount(() => {
+  clearTimeout(fillTimer)
   listingsStore.close()
   pinsStore.close()
+  routesStore.close()
   votesStore.close()
 })
 </script>

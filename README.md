@@ -104,6 +104,12 @@ Free Supabase projects pause after 7 days without activity. The daily refresh ca
 
 Adding a listing that matches another one in the hunt (same price ±2 %, area ±1 m², same district) shows "Looks like a duplicate of X" with **Delete this one**, **Keep both** and **Merge into X**. Merging keeps the older listing and fills its empty fields from the new one (its own values always win). It combines the features and moves photos, comments, price history and history events over. Each member keeps their vote on the older listing; a vote only on the new one moves over. The merged ad's link is remembered, so adding it again opens the kept listing.
 
+### Public transport trips
+
+Every listing shows how long it takes by public transport to each of the hunt's pins. Each pin has an **arrive by** day and time (default: Tuesday 9:00 Warsaw time; a family pin might be Saturday 12:00). The `transit-routes` edge function plans the trip for the next such day with [Transitous](https://transitous.org), a free, community-run journey planner built on the open timetables (ZTM, SKM, KM, WKD). No key or account is needed.
+
+Trips are looked up **once** and stored in `listing_routes`. A trip is planned again only when the listing or the pin moves, or the pin's arrival time changes. The app asks for missing trips by itself, in small batches spaced one second apart. A failed lookup is shown as such and retried after six hours. If Transitous changes its API version, point the function at the new endpoint with `supabase secrets set TRANSITOUS_URL=https://api.transitous.org/api/vN/plan`. Failures are logged in the function's logs with Transitous's answer.
+
 ## Local development
 
 Requirements: Node 22+, pnpm 10, Docker.

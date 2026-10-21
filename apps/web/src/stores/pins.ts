@@ -9,6 +9,9 @@ export interface PinInput {
   kind: PinKind
   lat: number
   lng: number
+  /** When trips should get you there: ISO weekday (1 = Monday) and "HH:MM", Warsaw time. */
+  arrive_weekday: number
+  arrive_time: string
 }
 
 /** The open hunt's pins. Any member may manage them. */
