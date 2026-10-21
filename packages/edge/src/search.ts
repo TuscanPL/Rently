@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { Database } from '@at/shared/database'
-import { hostOf, otodomSearchPageUrl, parseOtodomSearch, type SearchItem } from '@at/parsers'
+import type { ParsedListing } from '@at/shared'
+import { hostOf, otodomSearchPageUrl, parseListingHtml, parseOtodomSearch } from '@at/parsers'
 import { BROWSER_HEADERS, HttpError, json, withHttp } from './http.ts'
 
 type Db = SupabaseClient<Database>
@@ -10,7 +11,7 @@ type ResultRow = Database['public']['Tables']['search_results']['Insert']
 // Reads one saved Otodom search when a member asks: pull to refresh reads page 1
 // (newest ads), scrolling to the end of the list reads the next page. Never
 // scheduled; every request is one page, through the same per-site throttle as
-// adding a listing.
+// adding a listing. Opening a result card reads that one ad in full, once.
 
 const SITE_INTERVAL_MS = 4000
 /** A refresh within this long of the last one returns the stored results. */
@@ -42,11 +43,22 @@ export interface SearchRefreshResponse {
   totalResults: number | null
 }
 
-const bodySchema = z.object({
-  searchId: z.string().uuid(),
-  /** Omitted (or 1): refresh. 2+: load that next page of the current results. */
-  page: z.number().int().min(1).max(500).optional(),
-})
+export interface SearchDetailResponse {
+  /** The full ad as the listing parser reads it. */
+  detail: ParsedListing
+  /** False when it was already stored. */
+  fetched: boolean
+}
+
+const bodySchema = z
+  .object({
+    searchId: z.string().uuid(),
+    /** Omitted (or 1): refresh. 2+: load that next page of the current results. */
+    page: z.number().int().min(1).max(500).optional(),
+    /** Read this result's full ad instead. */
+    externalId: z.string().min(1).max(40).optional(),
+  })
+  .refine((b) => !(b.page && b.externalId))
 
 /** "2026-10-18 09:00:00" (Otodom, Warsaw time) → ISO; the day is what matters here. */
 function postedAt(value: string | null): string | null {
@@ -92,6 +104,32 @@ export function createSearchHandler(env: SearchEnv) {
     return res.text()
   }
 
+  /** The full ad behind a result card, fetched the first time anyone opens it. */
+  async function readDetail(searchId: string, externalId: string): Promise<SearchDetailResponse> {
+    const { data: result } = await admin
+      .from('search_results')
+      .select('url, detail')
+      .eq('search_id', searchId)
+      .eq('external_id', externalId)
+      .maybeSingle()
+    if (!result) throw new HttpError(404, 'Result not found')
+    if (result.detail) return { detail: result.detail as ParsedListing, fetched: false }
+
+    const url = new URL(result.url)
+    const parsed = parseListingHtml(await fetchPage(url.toString()), url)
+    // A page without the ad data (a bot wall, a removed ad) parses to the URL alone.
+    if (parsed.listing.rent == null && !parsed.listing.description) {
+      throw new HttpError(502, "Otodom didn't send the ad")
+    }
+    const detail = parsed.listing
+    await admin
+      .from('search_results')
+      .update({ detail: detail as never, detail_fetched_at: now().toISOString() })
+      .eq('search_id', searchId)
+      .eq('external_id', externalId)
+    return { detail, fetched: true }
+  }
+
   return withHttp(async (req) => {
     const authorization = req.headers.get('Authorization')
     if (!authorization) throw new HttpError(401, 'Missing Authorization header')
@@ -113,6 +151,8 @@ export function createSearchHandler(env: SearchEnv) {
       .eq('id', body.data.searchId)
       .maybeSingle()
     if (!search) throw new HttpError(404, 'Search not found')
+
+    if (body.data.externalId) return json(await readDetail(search.id, body.data.externalId))
 
     const started = now()
     const page = body.data.page ?? 1

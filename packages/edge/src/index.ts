@@ -31,4 +31,9 @@ export {
   type TransitResponse,
   type TripOutcome,
 } from './transit.ts'
-export { createSearchHandler, type SearchEnv, type SearchRefreshResponse } from './search.ts'
+export {
+  createSearchHandler,
+  type SearchEnv,
+  type SearchDetailResponse,
+  type SearchRefreshResponse,
+} from './search.ts'

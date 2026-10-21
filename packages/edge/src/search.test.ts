@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
-import { createSearchHandler, type SearchRefreshResponse } from './index.ts'
+import {
+  createSearchHandler,
+  type SearchDetailResponse,
+  type SearchRefreshResponse,
+} from './index.ts'
 
 // Integration test against the local stack (`supabase start`); skipped when it
 // isn't running. Otodom is faked with the parser fixture: it isn't reachable here.
@@ -21,6 +25,10 @@ const SEARCH_URL =
   'https://www.otodom.pl/pl/wyniki/wynajem/mieszkanie/mazowieckie/warszawa/warszawa/warszawa?roomsNumber=%5BTHREE%5D'
 const fixture = readFileSync(
   new URL('../../parsers/__fixtures__/otodom-search.html', import.meta.url),
+  'utf8',
+)
+const adPage = readFileSync(
+  new URL('../../parsers/__fixtures__/otodom-ad.html', import.meta.url),
   'utf8',
 )
 const nextData = JSON.parse(fixture.match(/<script id="__NEXT_DATA__"[^>]*>(.*)<\/script>/s)![1]!)
@@ -56,6 +64,9 @@ describe.skipIf(!stackUp)('search-refresh', () => {
       requests.push(url.toString())
       if (mode === 'forbidden') return new Response('Access denied', { status: 403 })
       if (mode === 'wall') return new Response('<html>Please verify you are human</html>')
+      if (url.pathname.includes('/oferta/')) {
+        return new Response(adPage, { headers: { 'content-type': 'text/html' } })
+      }
       const page = Number(url.searchParams.get('page') ?? 1)
       return new Response(resultsPage(page, page === 1 ? extraAds : []), {
         headers: { 'content-type': 'text/html' },
@@ -78,7 +89,8 @@ describe.skipIf(!stackUp)('search-refresh', () => {
     )
     return {
       status: res.status,
-      body: (await res.json()) as SearchRefreshResponse & { error?: string },
+      body: (await res.json()) as SearchRefreshResponse &
+        Partial<SearchDetailResponse> & { error?: string },
     }
   }
 
@@ -105,6 +117,11 @@ describe.skipIf(!stackUp)('search-refresh', () => {
       .single()
     if (error) throw error
     searchId = search.id
+  })
+
+  // The fake fetches still book real throttle slots; don't leave them to the other suites.
+  afterAll(async () => {
+    await admin.from('domain_fetch_slots').delete().eq('domain', 'otodom.pl')
   })
 
   const results = async () =>
@@ -198,6 +215,51 @@ describe.skipIf(!stackUp)('search-refresh', () => {
     expect(new Date(old.last_seen_at).toISOString()).toBe('2026-10-21T12:00:00.000Z')
     // Page 2 can be loaded again after the refresh.
     expect((await call({ searchId, page: 2 })).body).toMatchObject({ page: 2 })
+  })
+
+  it('reads the full ad behind a card once and keeps it', async () => {
+    requests.length = 0
+    const first = await call({ searchId, externalId: '66500001' })
+    expect(first.status).toBe(200)
+    expect(first.body.fetched).toBe(true)
+    expect(first.body.detail).toMatchObject({ source: 'otodom', rent: expect.any(Number) })
+    expect(first.body.detail!.description).toBeTruthy()
+    expect(requests).toHaveLength(1)
+    expect(new URL(requests[0]!).pathname).toContain('/oferta/')
+
+    const again = await call({ searchId, externalId: '66500001' })
+    expect(again.body).toMatchObject({ fetched: false, detail: first.body.detail })
+    expect(requests).toHaveLength(1)
+    const { data: row } = await user
+      .from('search_results')
+      .select('detail, detail_fetched_at')
+      .eq('search_id', searchId)
+      .eq('external_id', '66500001')
+      .single()
+    expect(row!.detail).toEqual(first.body.detail)
+    expect(row!.detail_fetched_at).not.toBeNull()
+
+    expect((await call({ searchId, externalId: 'nope' })).status).toBe(404)
+    expect((await call({ searchId, externalId: '66500001', page: 2 })).status).toBe(400)
+    expect(
+      (await call({ searchId, externalId: '66500001' }, `Bearer ${strangerToken}`)).status,
+    ).toBe(404)
+  })
+
+  it("doesn't keep an ad page Otodom wouldn't show", async () => {
+    clock = new Date('2026-10-21T12:30:00Z')
+    mode = 'wall'
+    const { status, body } = await call({ searchId, externalId: '66500003' })
+    expect(status).toBe(502)
+    expect(body.error).toBe("Otodom didn't send the ad")
+    mode = 'ok'
+    const { data: row } = await user
+      .from('search_results')
+      .select('detail')
+      .eq('search_id', searchId)
+      .eq('external_id', '66500003')
+      .single()
+    expect(row!.detail).toBeNull()
   })
 
   it('lets members hide a card for the hunt but not edit or add cards', async () => {

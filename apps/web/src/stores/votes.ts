@@ -8,7 +8,6 @@ import { useAuthStore } from './auth'
 
 interface VoteValue {
   swipe: Swipe
-  stars: number | null
 }
 
 interface UndoEntry {
@@ -88,7 +87,9 @@ export const useVotesStore = defineStore('votes', () => {
           const event = row as { id: string; listing_id: string; type: string; payload: unknown }
           const payload = (event.payload ?? {}) as { hunt_id?: string }
           if (payload.hunt_id !== id) return
-          if (event.type === 'matched') {
+          // Alone in a hunt, every listing you add is a "match": no toast for that.
+          const solo = Object.values(summaries.value).every((s) => s.member_count <= 1)
+          if (event.type === 'matched' && !solo) {
             toasts.value.push({ id: event.id, listingId: event.listing_id })
           }
           scheduleRefresh()
@@ -119,7 +120,8 @@ export const useVotesStore = defineStore('votes', () => {
     const { error } = value
       ? await supabase
           .from('votes')
-          .upsert({ listing_id: listingId, swipe: value.swipe, stars: value.stars })
+          // Stars are no longer used; a vote clears any left from before.
+          .upsert({ listing_id: listingId, swipe: value.swipe, stars: null })
       : await supabase
           .from('votes')
           .delete()
@@ -130,18 +132,18 @@ export const useVotesStore = defineStore('votes', () => {
 
   function myVote(listingId: string): VoteValue | null {
     const s = summaries.value[listingId]
-    return s?.my_swipe ? { swipe: s.my_swipe, stars: s.my_stars } : null
+    return s?.my_swipe ? { swipe: s.my_swipe } : null
   }
 
   /** Swipes the top card away right away and records the vote. */
-  async function swipeCard(entry: DeckEntry, swipe: Swipe, stars: number | null) {
+  async function swipeCard(entry: DeckEntry, swipe: Swipe) {
     const id = entry.listing_id
     undoStack.value.push({ entry, previous: myVote(id) })
     pinnedId = null
     deck.value = deck.value.filter((e) => e.listing_id !== id)
     inFlight.add(id)
     try {
-      await writeVote(id, { swipe, stars })
+      await writeVote(id, { swipe })
     } catch (e) {
       undoStack.value.pop()
       deck.value.unshift(entry)
@@ -164,8 +166,8 @@ export const useVotesStore = defineStore('votes', () => {
   }
 
   /** Votes from outside the deck (listing detail). */
-  async function setVote(listingId: string, swipe: Swipe, stars: number | null) {
-    await writeVote(listingId, { swipe, stars })
+  async function setVote(listingId: string, swipe: Swipe) {
+    await writeVote(listingId, { swipe })
     await refresh()
   }
 

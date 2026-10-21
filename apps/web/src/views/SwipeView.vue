@@ -34,11 +34,11 @@ const cards = computed<DeckCard[]>(() => {
 const visible = computed(() => cards.value.slice(0, 2).reverse())
 const topCard = computed(() => cards.value[0] ?? null)
 
-async function onSwipe(card: DeckCard, swipe: Swipe, stars: number | null) {
+async function onSwipe(card: DeckCard, swipe: Swipe) {
   error.value = null
   notice.value = null
   try {
-    await votes.swipeCard(card, swipe, stars)
+    await votes.swipeCard(card, swipe)
   } catch (e) {
     error.value = (e as Error).message
   }
@@ -114,7 +114,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :class="card === topCard ? 'z-10' : 'translate-y-3 scale-95 opacity-90'"
         :aria-hidden="card !== topCard"
         :data-testid="card === topCard ? 'deck-card' : undefined"
-        @swipe="(s, stars) => onSwipe(card, s, stars)"
+        @swipe="(s) => onSwipe(card, s)"
         @reconsider="reconsiderFor = card.listing_id"
       />
 

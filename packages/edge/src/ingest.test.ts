@@ -65,6 +65,8 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
   }
 
   beforeAll(async () => {
+    // Other suites' fake fetches can leave Otodom's throttle slot booked ahead.
+    await admin.from('domain_fetch_slots').delete().neq('domain', '')
     const email = `ingest-${Date.now()}@test.local`
     const { error } = await admin.auth.admin.createUser({
       email,
@@ -137,7 +139,15 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
       .from('listing_events')
       .select('type')
       .eq('listing_id', body.listingId)
-    expect(events).toEqual([{ type: 'added' }])
+      .order('created_at')
+    // Adding it is the adder's yes; alone in the hunt, that's a match.
+    expect(events).toEqual([{ type: 'added' }, { type: 'voted' }, { type: 'matched' }])
+    const { data: vote } = await user
+      .from('votes')
+      .select('swipe')
+      .eq('listing_id', body.listingId)
+      .single()
+    expect(vote).toEqual({ swipe: 'yes' })
     const { data: history } = await user
       .from('listing_price_history')
       .select('rent')
@@ -151,6 +161,53 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
       url: 'http://otodom.pl/oferta/3-pokoje-64-m-mokotow-blisko-skm-ID4tAbC#x',
     })
     expect(body.existing).toBe(true)
+  })
+
+  it("adding a listing again doesn't change an earlier vote", async () => {
+    const { data: listing } = await user
+      .from('listings')
+      .select('id')
+      .eq('canonical_url', 'https://otodom.pl/oferta/3-pokoje-64-m-mokotow-blisko-skm-ID4tAbC')
+      .single()
+    await user.from('votes').update({ swipe: 'no' }).eq('listing_id', listing!.id)
+    const { body } = await call({ huntId, url: OTODOM_URL })
+    expect(body).toMatchObject({ existing: true, listingId: listing!.id })
+    const { data: vote } = await user
+      .from('votes')
+      .select('swipe')
+      .eq('listing_id', listing!.id)
+      .single()
+    expect(vote).toEqual({ swipe: 'no' })
+    // Rejected listings aren't offered as duplicates; later tests rely on this one.
+    await user.from('votes').update({ swipe: 'yes' }).eq('listing_id', listing!.id)
+  })
+
+  it('saves an ad Browse already read without fetching it again', async () => {
+    const before = external.length
+    const url = 'https://www.otodom.pl/pl/oferta/2-pokoje-ochota-ID4zzz9'
+    const { status, body } = await call({
+      huntId,
+      url,
+      via: 'browse',
+      parsed: {
+        source: 'otodom',
+        url,
+        title: 'Two rooms in Ochota',
+        rent: 3600,
+        areaM2: 41,
+        rooms: 2,
+      },
+    })
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ existing: false, fetched: false })
+    expect(external.length).toBe(before)
+    const { data: event } = await user
+      .from('listing_events')
+      .select('payload')
+      .eq('listing_id', body.listingId)
+      .eq('type', 'added')
+      .single()
+    expect(event!.payload).toMatchObject({ method: 'browse' })
   })
 
   it('saves a partial listing when the site blocks fetching', async () => {
@@ -176,7 +233,7 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
     const { data: original } = await user
       .from('listings')
       .select('id')
-      .eq('source', 'otodom')
+      .eq('canonical_url', 'https://otodom.pl/oferta/3-pokoje-64-m-mokotow-blisko-skm-ID4tAbC')
       .single()
     const { body } = await call({
       huntId,

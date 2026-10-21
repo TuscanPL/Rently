@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { SWIPE_ICONS, type ListingSummary } from '@/lib/votes'
 
-// Each member's swipe and stars. Other members' stars stay hidden until everyone has voted.
+// Each member's swipe.
 defineProps<{ summary: ListingSummary }>()
 const { t } = useI18n()
 
@@ -24,7 +24,6 @@ const swipeClass = {
       <span class="font-medium">{{ v.display_name }}</span>
       <span v-if="v.swipe">{{ SWIPE_ICONS[v.swipe] }} {{ t(`votes.swipe.${v.swipe}`) }}</span>
       <span v-else>{{ t('votes.notYet') }}</span>
-      <span v-if="v.stars" class="text-amber-600">★{{ v.stars }}</span>
     </li>
   </ul>
 </template>

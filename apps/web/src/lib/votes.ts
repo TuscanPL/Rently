@@ -44,13 +44,3 @@ export interface DeckEntry {
 export type DeckCard = DeckEntry & { listing: ListingWithPhotos }
 
 export const SWIPE_ICONS: Record<Swipe, string> = { yes: '✓', maybe: '?', no: '✗' }
-
-/** Show the score only once someone has rated; an unrated match scores just the bonus. */
-export function hasRatings(s: ListingSummary) {
-  return s.combined_score != null && s.member_votes.some((v) => v.stars != null)
-}
-
-/** Highest combined score first; unscored last. */
-export function byScore(a: ListingSummary, b: ListingSummary) {
-  return (b.combined_score ?? -1) - (a.combined_score ?? -1)
-}

@@ -1,15 +1,70 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatArea, formatPLN } from '@at/shared'
+import { formatArea, formatPLN, type ParsedListing } from '@at/shared'
 import { resultTotal, type SearchResult } from '@/lib/browse'
+import { supabase } from '@/lib/supabase'
 
-// A closer look at an ad from the results without leaving the app: every
-// photo the results list has, the numbers, and Add / Open on Otodom.
-defineProps<{ result: SearchResult; inHunt: boolean; adding: boolean }>()
-defineEmits<{ close: []; add: [] }>()
+// A closer look at an ad from the results without leaving the app. It opens
+// with what the results list had and loads the full ad (description, all
+// photos, deposit, features) from Otodom the first time anyone opens it.
+const props = defineProps<{ result: SearchResult; inHunt: boolean; adding: boolean }>()
+const emit = defineEmits<{ close: []; add: []; detail: [detail: ParsedListing] }>()
 const { t, d } = useI18n()
 const broken = ref(new Set<number>())
+const loading = ref(false)
+const loadError = ref<string | null>(null)
+const showFull = ref(false)
+
+const detail = computed(() => props.result.detail as ParsedListing | null)
+const photos = computed(() =>
+  detail.value?.photos?.length ? detail.value.photos : props.result.photos,
+)
+const rent = computed(() => detail.value?.rent ?? props.result.rent)
+const adminFee = computed(() => detail.value?.adminFee ?? props.result.admin_fee)
+const description = computed(() => {
+  const text = detail.value?.description ?? ''
+  return showFull.value || text.length <= 400 ? text : `${text.slice(0, 400)}…`
+})
+const floor = computed(() => {
+  const f = detail.value?.floor ?? props.result.floor
+  const of = detail.value?.totalFloors
+  return f == null ? '—' : of != null ? `${f} / ${of}` : String(f)
+})
+const extras = computed(() => {
+  const l = detail.value
+  if (!l) return []
+  const yesNo = (v: boolean | undefined) => (v == null ? null : v ? t('form.yes') : t('form.no'))
+  const f = l.features ?? {}
+  return [
+    [t('form.deposit'), l.deposit != null ? formatPLN(l.deposit) : null],
+    [t('form.availableFrom'), l.availableFrom && d(new Date(l.availableFrom), 'short')],
+    [t('features.petsAllowed'), yesNo(f.petsAllowed)],
+    [t('features.furnished'), yesNo(f.furnished)],
+    [t('features.balcony'), yesNo(f.balcony)],
+    [t('features.elevator'), yesNo(f.elevator)],
+    [t('features.parking'), yesNo(f.parking)],
+    [t('features.yearBuilt'), f.yearBuilt],
+    [t('features.heating'), f.heating],
+  ].filter(([, v]) => v != null && v !== '') as [string, string | number][]
+})
+
+onMounted(async () => {
+  if (detail.value) return
+  loading.value = true
+  const { data, error } = await supabase.functions.invoke<{ detail: ParsedListing }>(
+    'search-refresh',
+    { body: { searchId: props.result.search_id, externalId: props.result.external_id } },
+  )
+  loading.value = false
+  if (error || !data) {
+    const ctx = (error as { context?: Response } | null)?.context
+    const body = ctx && (await ctx.json().catch(() => null))
+    loadError.value = body?.error ?? error?.message ?? null
+    return
+  }
+  emit('detail', data.detail)
+})
 </script>
 
 <template>
@@ -25,7 +80,7 @@ const broken = ref(new Set<number>())
       data-testid="search-sheet"
     >
       <div class="flex snap-x snap-mandatory gap-1 overflow-x-auto bg-slate-100">
-        <template v-for="(src, i) in result.photos" :key="src">
+        <template v-for="(src, i) in photos" :key="src">
           <img
             v-if="!broken.has(i)"
             :src="src"
@@ -37,7 +92,7 @@ const broken = ref(new Set<number>())
           />
         </template>
         <div
-          v-if="!result.photos.length"
+          v-if="!photos.length"
           class="flex aspect-[4/3] w-full items-center justify-center text-5xl text-slate-300"
         >
           🏠
@@ -60,18 +115,20 @@ const broken = ref(new Set<number>())
         <p v-if="result.address || result.district" class="text-sm text-slate-600">
           {{ [result.address, result.district].filter(Boolean).join(' · ') }}
         </p>
-        <p class="text-2xl font-bold text-brand-800">{{ formatPLN(resultTotal(result)) }}</p>
+        <p class="text-2xl font-bold text-brand-800">
+          {{ formatPLN(resultTotal({ rent, admin_fee: adminFee })) }}
+        </p>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
           <dt class="text-slate-500">{{ t('form.rent') }}</dt>
-          <dd>{{ formatPLN(result.rent) }}</dd>
+          <dd>{{ formatPLN(rent) }}</dd>
           <dt class="text-slate-500">{{ t('form.adminFee') }}</dt>
-          <dd>{{ formatPLN(result.admin_fee) }}</dd>
+          <dd>{{ formatPLN(adminFee) }}</dd>
           <dt class="text-slate-500">{{ t('form.areaM2') }}</dt>
           <dd>{{ formatArea(result.area_m2) }}</dd>
           <dt class="text-slate-500">{{ t('form.rooms') }}</dt>
           <dd>{{ result.rooms ?? '—' }}</dd>
           <dt class="text-slate-500">{{ t('form.floor') }}</dt>
-          <dd>{{ result.floor ?? '—' }}</dd>
+          <dd>{{ floor }}</dd>
           <dt class="text-slate-500">{{ t('form.advertiserType') }}</dt>
           <dd>
             {{
@@ -86,7 +143,28 @@ const broken = ref(new Set<number>())
             <dt class="text-slate-500">{{ t('browse.listed') }}</dt>
             <dd>{{ d(new Date(result.posted_at), 'short') }}</dd>
           </template>
+          <template v-for="[label, value] in extras" :key="label">
+            <dt class="text-slate-500">{{ label }}</dt>
+            <dd>{{ value }}</dd>
+          </template>
         </dl>
+        <p v-if="loading" class="text-sm text-slate-500" data-testid="detail-loading">
+          {{ t('browse.loadingAd') }}
+        </p>
+        <p v-else-if="loadError" class="text-sm text-rose-700" data-testid="detail-error">
+          {{ t('browse.adError', { error: loadError }) }}
+        </p>
+        <div v-if="description" data-testid="detail-description">
+          <p class="text-sm whitespace-pre-line text-slate-700">{{ description }}</p>
+          <button
+            v-if="(detail?.description?.length ?? 0) > 400"
+            type="button"
+            class="mt-1 text-sm font-semibold text-brand-700"
+            @click="showFull = !showFull"
+          >
+            {{ showFull ? t('listing.showLess') : t('listing.showMore') }}
+          </button>
+        </div>
         <p class="text-xs text-slate-500">{{ t('browse.sheetHelp') }}</p>
         <div class="flex gap-3">
           <a

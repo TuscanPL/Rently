@@ -64,18 +64,58 @@ const PAGE_TWO = [
   },
 ]
 
-/** Answers search-refresh like the function: writes the given ads as this refresh's results. */
+/** The full ad behind a card, as the listing parser reads it from the ad page. */
+function adDetail(ad: (typeof ADS)[number]) {
+  return {
+    source: 'otodom',
+    url: ad.url,
+    title: ad.title,
+    description: `${ad.title}. Jasne mieszkanie z balkonem, 5 minut pieszo do SKM.`,
+    rent: ad.rent,
+    adminFee: ad.admin_fee ?? undefined,
+    deposit: 8600,
+    areaM2: ad.area_m2,
+    rooms: ad.rooms,
+    floor: ad.floor,
+    totalFloors: 6,
+    district: ad.district,
+    address: ad.address,
+    advertiserType: ad.private_owner ? 'private' : 'agency',
+    features: { petsAllowed: true, balcony: true },
+    photos: [...ad.photos, 'https://img.test/a3.jpg'],
+  }
+}
+
+/**
+ * Answers search-refresh like the function: a refresh or load-more writes the
+ * given ads as that page's results; opening a card stores and returns its full ad.
+ */
 async function fakeRefresh(
   page: Page,
   ads: (resultPage: number) => (typeof ADS)[number][],
-  calls: { n: number },
+  calls: { n: number; detail?: number },
 ) {
   await page.route('**/functions/v1/search-refresh', async (route) => {
     const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers })
-    calls.n++
-    const body = route.request().postDataJSON() as { searchId: string; page?: number }
+    const body = route.request().postDataJSON() as {
+      searchId: string
+      page?: number
+      externalId?: string
+    }
     const { searchId } = body
+    if (body.externalId) {
+      calls.detail = (calls.detail ?? 0) + 1
+      const ad = [...ads(1), ...ads(2)].find((a) => a.external_id === body.externalId)!
+      const detail = adDetail(ad)
+      await admin
+        .from('search_results')
+        .update({ detail, detail_fetched_at: new Date().toISOString() })
+        .eq('search_id', searchId)
+        .eq('external_id', body.externalId)
+      return route.fulfill({ headers, json: { detail, fetched: true } })
+    }
+    calls.n++
     const resultPage = body.page ?? 1
     const { data: search } = await admin
       .from('saved_searches')
@@ -148,7 +188,7 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   page,
 }) => {
   let ads = [...ADS]
-  const calls = { n: 0 }
+  const calls: { n: number; detail?: number } = { n: 0 }
   await fakeRefresh(page, (p) => (p === 1 ? ads : PAGE_TWO), calls)
   // The ads' photos, served here (they'd come from Otodom's CDN).
   const png = Buffer.from(
@@ -185,11 +225,15 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   await expect(page.getByTestId('search-status')).toContainText('42 on Otodom, showing 2')
   await snap(page, 'browse-results')
 
-  // A closer look without leaving the app, then add it to the hunt.
+  // A closer look without leaving the app: the full ad loads in, then add it to the hunt.
   await cards.first().getByRole('button').first().click()
   const sheet = page.getByTestId('search-sheet')
-  await expect(sheet.locator('img')).toHaveCount(2)
   await expect(sheet).toContainText('ul. Bokserska 12, Warszawa · Mokotów')
+  await expect(sheet.getByTestId('detail-description')).toContainText('5 minut pieszo do SKM')
+  await expect(sheet.locator('img')).toHaveCount(3)
+  await expect(sheet).toContainText('Deposit (kaucja)')
+  await expect(sheet).toContainText('4 / 6')
+  expect(calls.detail).toBe(1)
   await expect(sheet.getByRole('link', { name: 'Open on Otodom ↗' })).toHaveAttribute(
     'href',
     ADS[0]!.url,
@@ -199,8 +243,17 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   await expect(sheet.getByRole('button', { name: 'In hunt' })).toBeDisabled({ timeout: 30_000 })
   await sheet.getByRole('button', { name: 'Close' }).click()
   await expect(cards.first()).toContainText('✓ In hunt')
+  // Opening it again uses the stored ad.
+  await cards.first().getByRole('button').first().click()
+  await expect(sheet.getByTestId('detail-description')).toBeVisible()
+  expect(calls.detail).toBe(1)
+  await sheet.getByRole('button', { name: 'Close' }).click()
+  // The listing is saved from the full ad, without fetching it again.
   await page.getByRole('link', { name: 'Our listings' }).click()
   await expect(page.getByTestId('listing-card')).toHaveCount(1)
+  await page.getByTestId('listing-card').click()
+  await expect(page.getByText('5 minut pieszo do SKM')).toBeVisible()
+  await page.goBack()
   await page.getByRole('link', { name: 'Browse Otodom' }).click()
 
   // Hiding is for the whole hunt; hidden ads can be shown again.

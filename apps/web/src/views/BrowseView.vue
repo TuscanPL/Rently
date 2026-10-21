@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { OtodomSearchParams } from '@at/parsers'
-import type { HuntCriteria } from '@at/shared'
+import type { HuntCriteria, ParsedListing } from '@at/shared'
 import { supabase } from '@/lib/supabase'
 import { ingest } from '@/lib/listings'
 import {
@@ -49,13 +49,13 @@ const huntId = computed(() => route.params.huntId as string)
 // Typed as Ref: the jsonb `params` column makes ref<T>() infer too deeply.
 const searches: Ref<SavedSearch[]> = ref([])
 const selectedId = ref<string | null>(null)
-const results = ref<SearchResult[]>([])
+const results: Ref<SearchResult[]> = ref([])
 const loaded = ref(false)
 const error = ref<string | null>(null)
 const notice = ref<string | null>(null)
 const showHidden = ref(false)
 const adding = ref(new Set<string>())
-const open = ref<SearchResult | null>(null)
+const open: Ref<SearchResult | null> = ref(null)
 
 // The setup / edit form.
 const editing = ref<'new' | 'edit' | null>(null)
@@ -169,7 +169,12 @@ async function add(result: SearchResult) {
   adding.value = new Set([...adding.value, result.external_id])
   error.value = null
   try {
-    await ingest({ huntId: huntId.value, url: result.url })
+    // The full ad read when the card was opened saves fetching it again.
+    await ingest(
+      result.detail
+        ? { huntId: huntId.value, url: result.url, parsed: result.detail, via: 'browse' }
+        : { huntId: huntId.value, url: result.url },
+    )
     await listingsStore.fetchAll()
   } catch (e) {
     error.value = (e as Error).message
@@ -178,6 +183,12 @@ async function add(result: SearchResult) {
     next.delete(result.external_id)
     adding.value = next
   }
+}
+
+function setDetail(result: SearchResult, detail: ParsedListing) {
+  const patched = { ...result, detail: detail as never }
+  results.value = results.value.map((r) => (r.external_id === result.external_id ? patched : r))
+  if (open.value?.external_id === result.external_id) open.value = patched
 }
 
 async function setHidden(result: SearchResult, hidden: boolean) {
@@ -432,6 +443,7 @@ onBeforeUnmount(() => {
       :adding="adding.has(open.external_id)"
       @close="open = null"
       @add="add(open!)"
+      @detail="(detail) => setDetail(open!, detail)"
     />
   </div>
 </template>

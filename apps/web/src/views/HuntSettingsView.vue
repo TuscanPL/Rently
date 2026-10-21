@@ -63,11 +63,6 @@ async function saveDetails() {
   savingDetails.value = false
 }
 
-function toggleReveal(event: Event) {
-  const checked = (event.target as HTMLInputElement).checked
-  void run(() => huntsStore.updateHunt({ reveal_votes_after_both: checked }))
-}
-
 async function createInvite() {
   creatingInvite.value = true
   await run(async () => {
@@ -157,15 +152,6 @@ function deleteHunt() {
             <label class="label" for="hunt-city">{{ t('hunts.city') }}</label>
             <input id="hunt-city" v-model="city" required class="input" />
           </div>
-          <label class="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              class="mt-0.5 h-5 w-5 accent-brand-700"
-              :checked="huntsStore.current?.reveal_votes_after_both"
-              @change="toggleReveal"
-            />
-            {{ t('settings.reveal') }}
-          </label>
           <button
             v-if="huntsStore.isOwner"
             type="submit"

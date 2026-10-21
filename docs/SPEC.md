@@ -25,7 +25,7 @@ The first users are two people renting in Warsaw. The app is multi-user from the
 - **Hunt:** one apartment search, such as "Warsaw flat 2026". A hunt has members, criteria, pins and listings. A user can belong to several hunts.
 - **Member:** a user in a hunt. Roles are `owner` and `member`. People join through an invite link.
 - **Listing:** one apartment saved to a hunt. It is a **snapshot**, so it stays in the app even after the original ad is removed.
-- **Vote:** what one member thinks of one listing: a swipe (`yes`/`maybe`/`no`) and optional 1–5 stars.
+- **Vote:** what one member thinks of one listing: a swipe (`yes`/`maybe`/`no`). Adding a listing counts as the adder's `yes`.
 - **Match:** every member has swiped `yes` on the listing.
 - **Pin:** a place the hunt cares about, such as a workplace, a station or a parent's flat. The app shows each listing's distance to every pin.
 
@@ -61,7 +61,7 @@ The first users are two people renting in Warsaw. The app is multi-user from the
 ### Swipe deck
 - A Tinder-style card stack of listings the current user **hasn't voted on yet**. Listings another member has swiped `no` on **stay in the deck**. They carry a clear **"✗ Rejected by {name}"** banner and are sorted after listings nobody has rejected. Each card shows: photo carousel, total monthly cost, m², rooms, district, distance to pins, and badges for criteria it breaks.
 - Swipe right = yes, left = no, up = maybe. Buttons do the same for desktop and accessibility. Undo the last swipe.
-- Optional 1–5 star rating on the card or the detail view.
+- No star ratings: adding a listing is the adder's yes, so it only shows up in the other members' decks.
 - **Realtime:** when a partner's swipe completes a match, show a "It's a match 🏠" toast and push notification.
 
 ### Reconsider
@@ -73,12 +73,12 @@ Any member can take a rejected listing back into consideration. This works the s
 - All of this is written to `listing_events`.
 
 ### Matches and disagreements
-- **Matches tab:** listings everyone swiped yes on, sorted by combined score.
-- **Disagreements view:** listings where one member said yes and another said no, or where star ratings differ by 2 or more. These are the ones to discuss.
+- **Matches tab:** listings everyone swiped yes on, newest first.
+- **Disagreements view:** listings where one member said yes and another said no. These are the ones to discuss.
 - **Maybes:** a separate filter.
 
 ### Combined score
-- `combinedScore = average of members' stars`, with a bonus for a match. Hide each member's stars until both have voted, which avoids anchoring. This is a per-hunt toggle, on by default.
+- Dropped: star ratings went unused. The `votes.stars` column and `combined_score` remain in the schema but the app no longer writes or shows them.
 
 ### Status pipeline
 `new → contacted → viewing_booked → viewed → applied → won | rejected | gone`
@@ -98,11 +98,11 @@ Seed example for the first hunt: Warsaw, 3 rooms, close to SKM Służew or a sta
 
 ## Views
 - **Deck:** described above. This is the default tab on mobile.
-- **List:** sortable, filterable table or card grid. Sort by total cost, cost/m², score, distance to pin, date added.
+- **List:** sortable, filterable table or card grid. Sort by total cost, cost/m², distance to pin, date added.
 - **Map:** listings as markers coloured by vote state, plus hunt pins. Tapping a marker opens a mini card.
 - **Compare:** 2–4 listings side by side, with the best value in each row highlighted.
 - **Pipeline:** kanban.
-- **Listing detail:** gallery, all fields, link to the original ad, price history, each member's vote and stars (after reveal), comment thread, events timeline, edit fields.
+- **Listing detail:** gallery, all fields, link to the original ad, price history, each member's vote, comment thread, events timeline, edit fields.
 - **Hunt settings:** members, invites, criteria, pins.
 
 ## Polish rental specifics (shared/cost helpers)
