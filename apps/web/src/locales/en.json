@@ -576,5 +576,19 @@
       "FERRY": "Ferry",
       "OTHER": "Transit"
     }
+  },
+  "appUpdate": {
+    "ready": "A new version of the app is ready.",
+    "update": "Update",
+    "updating": "Updating…",
+    "later": "Later",
+    "title": "App version",
+    "version": "Version {version}",
+    "built": "built {date}",
+    "check": "Check for updates",
+    "checking": "Checking…",
+    "updateNow": "Update to the new version",
+    "current": "You're on the latest version.",
+    "unavailable": "Couldn't check right now. Updates are checked in the installed or opened app when you're online."
   }
 }

@@ -1,8 +1,22 @@
+import { execSync } from 'node:child_process'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+/** Short commit hash: GitHub Actions' GITHUB_SHA, else git, else "dev". APP_VERSION overrides. */
+function appVersion(): string {
+  if (process.env.APP_VERSION) return process.env.APP_VERSION
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7)
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    return 'dev'
+  }
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -12,11 +26,18 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    // Shown on the Account page so you can tell which version you're running.
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion()),
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    },
     plugins: [
       vue(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // New versions wait for the "Update" banner (lib/appUpdate.ts registers the worker).
+        registerType: 'prompt',
+        injectRegister: false,
         // Our own worker (src/sw.ts): workbox precaching and the index.html
         // navigation fallback, plus the Web Push `push` / `notificationclick` handlers.
         strategies: 'injectManifest',

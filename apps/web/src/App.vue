@@ -3,6 +3,7 @@ import { watch } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
+import UpdateBanner from '@/components/UpdateBanner.vue'
 
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
@@ -20,4 +21,5 @@ watch(
 
 <template>
   <RouterView />
+  <UpdateBanner />
 </template>

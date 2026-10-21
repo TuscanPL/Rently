@@ -16,3 +16,4 @@ supabase/functions/_shared/edge.js
 
 # Agent worktrees
 .claude/worktrees/
+dist-update

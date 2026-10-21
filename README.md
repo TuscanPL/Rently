@@ -143,6 +143,10 @@ pnpm --filter @at/web e2e             # Playwright against the local stack (star
 
 How it works: every notification starts as a `listing_events` row. The `listing_events_notify` trigger (`supabase/migrations/20261024000000_notifications.sql`) writes one `notifications` row per recipient and posts their ids to the `send-push` function with `pg_net`. `send-push` (`packages/edge/src/push.ts`) loads the recipients' `push_subscriptions` and sends Web Push (RFC 8291 encryption and VAPID with WebCrypto, `packages/edge/src/webpush.ts`). Subscriptions the push service has forgotten (404/410) are deleted. The service worker (`apps/web/src/sw.ts`, built with vite-plugin-pwa's `injectManifest`) shows the notification and opens the right screen when it's tapped.
 
+### Updates to the installed app
+
+A new deploy is picked up without reinstalling. The app checks for a new version on launch, whenever it comes back to the foreground (at most once a minute) and every 30 minutes while open. A new version downloads in the background and waits. A banner then says **"A new version of the app is ready"**, and **Update** switches to it and reloads, so nobody loses a half-typed form. **Later** hides the banner, and the update stays ready for next time. Account → **App version** shows the commit and build time, with a **Check for updates** button. `pnpm --filter @at/web e2e:update` tests the whole flow against two real production builds.
+
 ## Browser extension
 
 `apps/extension` is an MV3 extension for Chrome and Firefox. On a listing page, click its toolbar button. The popup reads the page as it appears in your browser, runs the same parsers as the server (`packages/parsers`), and shows a short preview. Pick a hunt and click **Add this listing**. The parsed data goes to `ingest-listing`, which checks for duplicates and saves the listing. This also works on sites that block server-side fetching.

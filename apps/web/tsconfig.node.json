@@ -7,8 +7,10 @@
     ]
   },
   "include": [
-    "vite.config.ts",
+    "e2e",
+    "e2e-update",
     "playwright.config.ts",
-    "e2e"
+    "playwright.update.config.ts",
+    "vite.config.ts"
   ]
 }
