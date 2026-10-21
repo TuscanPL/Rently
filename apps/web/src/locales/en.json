@@ -101,7 +101,6 @@
     },
     "urlLabel": "Listing link",
     "urlHelp": "Otodom, OLX, Gratka, Morizon… or any other site.",
-    "paste": "Paste",
     "addButton": "Add listing",
     "fetching": "Fetching the listing…",
     "textLabel": "Post text",
@@ -560,6 +559,22 @@
     "weekday": "Day",
     "time": "Time (Warsaw)",
     "compareRow": "{label} by public transport",
-    "credit": "Public transport trips planned with"
+    "credit": "Public transport trips planned with",
+    "showOnMap": "Show route on map",
+    "fromListing": "this flat",
+    "mode": {
+      "WALK": "Walk",
+      "BUS": "Bus",
+      "COACH": "Coach",
+      "TRAM": "Tram",
+      "SUBWAY": "Metro",
+      "METRO": "Metro",
+      "RAIL": "Train",
+      "REGIONAL_RAIL": "Train",
+      "REGIONAL_FAST_RAIL": "Train",
+      "SUBURBAN": "Train",
+      "FERRY": "Ferry",
+      "OTHER": "Transit"
+    }
   }
 }

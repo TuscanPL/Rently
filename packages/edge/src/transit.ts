@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { Database } from '@at/shared/database'
+import { decodePolyline, distanceKm } from '@at/shared'
 import { HttpError, json, withHttp } from './http.ts'
 
 type Db = SupabaseClient<Database>
@@ -26,6 +27,13 @@ export interface TransitLeg {
   from: string | null
   to: string | null
   minutes: number
+  /** Where the leg starts and ends, for drawing it when there's no shape. */
+  fromLat?: number | null
+  fromLng?: number | null
+  toLat?: number | null
+  toLng?: number | null
+  /** The leg's shape as an encoded polyline, checked against its start. */
+  path?: { points: string; precision: number } | null
 }
 
 export type TripOutcome =
@@ -43,7 +51,14 @@ export type TripOutcome =
   | { status: 'error' }
 
 // MOTIS `plan` response, read leniently: only what we show, everything optional.
-const placeSchema = z.object({ name: z.string().nullish() }).passthrough().nullish()
+const placeSchema = z
+  .object({ name: z.string().nullish(), lat: z.number().nullish(), lon: z.number().nullish() })
+  .passthrough()
+  .nullish()
+const geometrySchema = z
+  .object({ points: z.string(), precision: z.number().int().nullish() })
+  .passthrough()
+  .nullish()
 const legSchema = z
   .object({
     mode: z.string(),
@@ -53,6 +68,7 @@ const legSchema = z
     routeShortName: z.string().nullish(),
     from: placeSchema,
     to: placeSchema,
+    legGeometry: geometrySchema,
   })
   .passthrough()
 const itinerarySchema = z
@@ -82,6 +98,32 @@ function legSeconds(leg: z.infer<typeof legSchema>): number {
   return 0
 }
 
+/** A decoded shape is trusted only if it starts within this of the leg's start. */
+const PATH_START_TOLERANCE_KM = 1.5
+
+/**
+ * The leg's polyline, if it decodes to something that starts where the leg does.
+ * The precision isn't always stated (and differs between MOTIS versions), so
+ * the stated one is tried first, then the usual 7, 6 and 5.
+ */
+export function legPath(leg: z.infer<typeof legSchema>): TransitLeg['path'] {
+  const geometry = leg.legGeometry
+  if (!geometry?.points) return null
+  const start = leg.from?.lat != null && leg.from?.lon != null ? leg.from : null
+  const candidates = [...new Set([geometry.precision ?? 6, 7, 6, 5])]
+  for (const precision of candidates) {
+    const first = decodePolyline(geometry.points.slice(0, 40), precision)[0]
+    if (!first) continue
+    const near = start
+      ? distanceKm({ lat: first[0], lng: first[1] }, { lat: start.lat!, lng: start.lon! }) <=
+        PATH_START_TOLERANCE_KM
+      : // No start to compare with: at least insist on a point in Poland.
+        first[0] > 48.9 && first[0] < 55 && first[1] > 14 && first[1] < 24.2
+    if (near) return { points: geometry.points, precision }
+  }
+  return null
+}
+
 /** The quickest trip: transit itineraries and the direct (walking) option compete. */
 export function pickTrip(plan: z.infer<typeof planSchema>): TripOutcome {
   const all: Itinerary[] = [...plan.itineraries, ...plan.direct]
@@ -93,6 +135,11 @@ export function pickTrip(plan: z.infer<typeof planSchema>): TripOutcome {
     from: leg.from?.name ?? null,
     to: leg.to?.name ?? null,
     minutes: minutes(legSeconds(leg)),
+    fromLat: leg.from?.lat ?? null,
+    fromLng: leg.from?.lon ?? null,
+    toLat: leg.to?.lat ?? null,
+    toLng: leg.to?.lon ?? null,
+    path: legPath(leg),
   }))
   const transitLegs = legs.filter((l) => l.mode !== 'WALK').length
   return {

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
+import { encodePolyline } from '@at/shared'
 import { signIn, uniqueEmail } from './helpers'
 
 // Public transport trips to pins. The transit-routes function really runs here,
@@ -92,18 +93,88 @@ test('pins carry an arrival time and listings show the public transport trip', a
     transfers: 1,
     walk_min: 9,
     legs: [
-      { mode: 'WALK', line: null, from: null, to: 'Bokserska', minutes: 5 },
-      { mode: 'TRAM', line: '17', from: 'Bokserska', to: 'Wilanowska', minutes: 15 },
-      { mode: 'SUBWAY', line: 'M1', from: 'Wilanowska', to: 'Centrum', minutes: 17 },
-      { mode: 'WALK', line: null, from: 'Centrum', to: null, minutes: 4 },
+      {
+        mode: 'WALK',
+        line: null,
+        from: 'START',
+        to: 'Bokserska',
+        minutes: 5,
+        toLat: 52.1795,
+        toLng: 21.0045,
+      },
+      {
+        mode: 'TRAM',
+        line: '17',
+        from: 'Bokserska',
+        to: 'Wilanowska',
+        minutes: 15,
+        fromLat: 52.1795,
+        fromLng: 21.0045,
+        toLat: 52.1808,
+        toLng: 21.0219,
+        path: {
+          points: encodePolyline(
+            [
+              [52.1795, 21.0045],
+              [52.1801, 21.013],
+              [52.1808, 21.0219],
+            ],
+            6,
+          ),
+          precision: 6,
+        },
+      },
+      {
+        mode: 'SUBWAY',
+        line: 'M1',
+        from: 'Wilanowska',
+        to: 'Centrum',
+        minutes: 17,
+        fromLat: 52.1808,
+        fromLng: 21.0219,
+        toLat: 52.2314,
+        toLng: 21.0109,
+      },
+      {
+        mode: 'WALK',
+        line: null,
+        from: 'Centrum',
+        to: 'END',
+        minutes: 4,
+        fromLat: 52.2314,
+        fromLng: 21.0109,
+      },
     ],
   })
+  // Collapsed: the row shows the time; tapping it shows the whole trip, one leg per line.
   await expect(trip).toContainText('🚆 41 min')
-  await expect(trip).toContainText('1 transfer')
-  await expect(trip).toContainText('arrive Sat 12:00')
-  await expect(page.getByTestId('transit-legs')).toHaveText('🚶 5 · 🚋 17 · 🚇 M1 · 🚶 4')
+  await expect(page.getByTestId('trip-details')).toHaveCount(0)
+  await trip.getByTestId('pin-trip-toggle').click()
+  const details = page.getByTestId('trip-details')
+  await expect(details).toContainText('1 transfer')
+  await expect(details).toContainText('arrive Sat 12:00')
+  const legs = details.getByTestId('transit-legs').getByRole('listitem')
+  await expect(legs).toHaveCount(4)
+  await expect(legs.nth(0)).toContainText('Walk · this flat → Bokserska')
+  await expect(legs.nth(1)).toContainText('Tram 17 · Bokserska → Wilanowska')
+  await expect(legs.nth(2)).toContainText('Metro M1 · Wilanowska → Centrum')
+  await expect(legs.nth(3)).toContainText('Walk · Centrum → Mum')
+  await expect(legs.nth(2)).toContainText('17 min')
   await page.getByTestId('distances').scrollIntoViewIfNeeded()
   await snap(page, 'transit-detail')
+
+  // The route on the map: one line per leg, walks dashed, the trip chip pressed.
+  await details.getByTestId('trip-on-map').click()
+  await expect(page.getByTestId('map-card')).toBeVisible()
+  await expect(page.getByTestId('trip-chip')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('path.trip-line')).toHaveCount(4)
+  await expect(page.locator('path.trip-line--tram')).toHaveCount(1)
+  await expect(page.locator('path.trip-line--walk')).toHaveCount(2)
+  await expect(page.getByTestId('map-trip-legs')).toHaveText('🚶 5 · 🚋 17 · 🚇 M1 · 🚶 4')
+  await snap(page, 'transit-map')
+  // Tapping the chip again hides it.
+  await page.getByTestId('trip-chip').click()
+  await expect(page.locator('path.trip-line')).toHaveCount(0)
 
   // Cards show it next to the distance.
   await page.getByRole('link', { name: 'List' }).click()

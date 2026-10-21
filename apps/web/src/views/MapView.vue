@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 import { formatArea, formatPLN, hasCoords } from '@at/shared'
@@ -14,6 +14,8 @@ import {
 } from '@/lib/geo'
 import { createMap, pinMarker, trackSize } from '@/lib/leaflet'
 import { listingTotal, sortedPhotos } from '@/lib/listings'
+import { legSummary, routeSegments } from '@/lib/transit'
+import { useRoutesStore } from '@/stores/routes'
 import { useVotesStore } from '@/stores/votes'
 import { useListingsStore } from '@/stores/listings'
 import { usePinsStore } from '@/stores/pins'
@@ -22,6 +24,8 @@ import PinDistances from '@/components/PinDistances.vue'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
+const routesStore = useRoutesStore()
 const votesStore = useVotesStore()
 const listingsStore = useListingsStore()
 const pinsStore = usePinsStore()
@@ -30,6 +34,10 @@ const huntId = route.params.huntId as string
 const mapEl = useTemplateRef<HTMLDivElement>('mapEl')
 const focusId = typeof route.query.focus === 'string' ? route.query.focus : null
 const selectedId = ref<string | null>(focusId)
+/** The pin whose public transport trip from the selected listing is drawn. */
+const tripPinId = ref<string | null>(
+  typeof route.query.route === 'string' ? route.query.route : null,
+)
 
 const located = computed(() => listingsStore.listings.filter(hasCoords))
 const unlocatedCount = computed(() => listingsStore.listings.length - located.value.length)
@@ -38,9 +46,21 @@ const selected = computed(
 )
 const selectedPhotos = computed(() => sortedPhotos(selected.value?.listing_photos ?? []))
 
+/** The selected listing's found trips, one chip per pin. */
+const selectedTrips = computed(() => {
+  const l = selected.value
+  if (!l) return []
+  return pinsStore.pins.flatMap((pin) => {
+    const trip = routesStore.get(l.id, pin.id)
+    return trip?.status === 'ok' ? [{ pin, trip }] : []
+  })
+})
+const shownTrip = computed(() => selectedTrips.value.find((s) => s.pin.id === tripPinId.value))
+
 let map: L.Map | null = null
 const listingLayer = L.layerGroup()
 const pinLayer = L.layerGroup()
+const tripLayer = L.layerGroup()
 let fitted = false
 /** Which listings and pins the current framing covers. */
 let framedKey = ''
@@ -90,6 +110,48 @@ function draw() {
   }
 }
 
+function drawTrip(frame: boolean) {
+  tripLayer.clearLayers()
+  const l = selected.value
+  const shown = shownTrip.value
+  if (!map || !l || !hasCoords(l) || !shown) return
+  const segments = routeSegments(shown.trip, l, shown.pin)
+  for (const seg of segments) {
+    // A white casing under each line keeps it readable on any tile colour.
+    L.polyline(seg.points, { color: '#ffffff', weight: 8, opacity: 0.9, interactive: false }).addTo(
+      tripLayer,
+    )
+    L.polyline(seg.points, {
+      color: seg.color,
+      weight: 5,
+      dashArray: seg.dashed ? '2 8' : undefined,
+      lineCap: 'round',
+      interactive: false,
+      className: `trip-line trip-line--${seg.mode.toLowerCase()}`,
+    }).addTo(tripLayer)
+  }
+  if (frame && segments.length) {
+    userMoved = true
+    map.fitBounds(L.latLngBounds(segments.flatMap((s) => s.points)), {
+      paddingTopLeft: [36, 36],
+      paddingBottomRight: [36, 220],
+      maxZoom: 16,
+      animate: false,
+    })
+  }
+}
+
+function toggleTrip(pinId: string) {
+  tripPinId.value = tripPinId.value === pinId ? null : pinId
+  void router.replace({
+    query: {
+      ...route.query,
+      focus: selectedId.value ?? undefined,
+      route: tripPinId.value ?? undefined,
+    },
+  })
+}
+
 function fit() {
   if (!map) return
   const focus = located.value.find((l) => l.id === focusId)
@@ -120,6 +182,7 @@ let userMoved = false
 
 onMounted(() => {
   map = createMap(mapEl.value!)
+  tripLayer.addTo(map)
   listingLayer.addTo(map)
   pinLayer.addTo(map)
   map.on('click', () => (selectedId.value = null))
@@ -128,6 +191,7 @@ onMounted(() => {
     if (fitted && !userMoved) fit()
   })
   draw()
+  drawTrip(true)
 })
 
 onBeforeUnmount(() => {
@@ -137,6 +201,14 @@ onBeforeUnmount(() => {
 })
 
 watch([markerKey, () => pinsStore.pins, selectedId, () => listingsStore.loading], draw)
+// Picking another listing hides the previous listing's trip.
+watch(selectedId, (id, old) => {
+  if (old !== null && id !== old) tripPinId.value = null
+})
+watch(
+  () => [shownTrip.value?.trip, selected.value?.lat, selected.value?.lng],
+  () => drawTrip(true),
+)
 
 const legend = (['match', 'yes', 'maybe', 'no', 'unvoted'] as const).map((tone) => ({
   tone,
@@ -172,6 +244,27 @@ const legend = (['match', 'yes', 'maybe', 'no', 'unvoted'] as const).map((tone) 
             {{ selected.rooms ? t('listing.roomsShort', selected.rooms) : '—' }}
           </p>
           <PinDistances :listing="selected" compact />
+          <div v-if="selectedTrips.length" class="mt-1.5 flex flex-wrap gap-1.5">
+            <button
+              v-for="{ pin, trip } in selectedTrips"
+              :key="pin.id"
+              type="button"
+              class="rounded-full border px-2 py-0.5 text-xs font-medium"
+              :class="
+                tripPinId === pin.id
+                  ? 'border-brand-700 bg-brand-700 text-white'
+                  : 'border-slate-300 bg-white text-slate-700'
+              "
+              :aria-pressed="tripPinId === pin.id"
+              data-testid="trip-chip"
+              @click="toggleTrip(pin.id)"
+            >
+              🚆 {{ t('transit.minutes', { n: trip.duration_min }) }} {{ pin.label }}
+            </button>
+          </div>
+          <p v-if="shownTrip" class="mt-1 text-xs text-slate-600" data-testid="map-trip-legs">
+            {{ legSummary(shownTrip.trip) }}
+          </p>
         </div>
         <div class="flex shrink-0 flex-col items-end justify-between py-1 pr-2">
           <button
