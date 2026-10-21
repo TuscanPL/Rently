@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { isOtodomSearchUrl } from '@at/parsers'
+import type { OtodomSearchParams } from '@at/parsers'
+import type { HuntCriteria } from '@at/shared'
 import { supabase } from '@/lib/supabase'
 import { ingest } from '@/lib/listings'
 import {
@@ -19,16 +20,22 @@ import {
 import { usePullToRefresh } from '@/lib/usePullToRefresh'
 import { useAuthStore } from '@/stores/auth'
 import { useListingsStore } from '@/stores/listings'
+import { useHuntsStore } from '@/stores/hunts'
 import SearchResultCard from '@/components/SearchResultCard.vue'
 import SearchResultSheet from '@/components/SearchResultSheet.vue'
+import SearchForm from '@/components/SearchForm.vue'
 
-// Browse a saved Otodom search inside the app. Results are fetched only when
-// someone pulls to refresh (or taps Refresh), never in the background.
+// Browse a saved Otodom search inside the app, like a feed: pull to refresh
+// reads page 1 (newest ads), scrolling to the end reads the next page. Nothing
+// is fetched in the background.
 
 interface RefreshResponse {
   refreshed: boolean
   total: number
   newCount: number
+  page: number
+  loadedPages: number
+  totalPages: number | null
   totalResults: number | null
 }
 
@@ -36,9 +43,11 @@ const { t } = useI18n()
 const route = useRoute()
 const auth = useAuthStore()
 const listingsStore = useListingsStore()
+const huntsStore = useHuntsStore()
 const huntId = computed(() => route.params.huntId as string)
 
-const searches = ref<SavedSearch[]>([])
+// Typed as Ref: the jsonb `params` column makes ref<T>() infer too deeply.
+const searches: Ref<SavedSearch[]> = ref([])
 const selectedId = ref<string | null>(null)
 const results = ref<SearchResult[]>([])
 const loaded = ref(false)
@@ -50,9 +59,8 @@ const open = ref<SearchResult | null>(null)
 
 // The setup / edit form.
 const editing = ref<'new' | 'edit' | null>(null)
-const formLabel = ref('')
-const formUrl = ref('')
 const saving = ref(false)
+const loadingMore = ref(false)
 
 const search = computed(() => searches.value.find((s) => s.id === selectedId.value) ?? null)
 const urls = computed(() => huntUrls(listingsStore.listings))
@@ -61,7 +69,18 @@ const current = computed(() =>
 )
 const visible = computed(() => current.value.filter((r) => showHidden.value || !r.hidden_at))
 const hiddenCount = computed(() => current.value.filter((r) => r.hidden_at).length)
-const urlValid = computed(() => isOtodomSearchUrl(formUrl.value.trim()))
+const canLoadMore = computed(
+  () =>
+    !!search.value?.last_refreshed_at &&
+    search.value.total_pages != null &&
+    search.value.loaded_pages < search.value.total_pages,
+)
+const criteria = computed<HuntCriteria>(() => {
+  // Read through `unknown`: the jsonb column's type is too deep to narrow directly.
+  const hunt = huntsStore.current as { criteria?: unknown; city?: string } | null
+  return (hunt?.criteria ?? {}) as HuntCriteria
+})
+const huntCity = computed(() => (huntsStore.current as { city?: string } | null)?.city ?? null)
 
 async function loadSearches() {
   const { data, error: err } = await supabase
@@ -101,19 +120,26 @@ async function load() {
   }
 }
 
-async function refresh() {
-  if (!search.value) return
-  const firstLoad = !search.value.last_refreshed_at
-  error.value = null
-  notice.value = null
+async function invokeRefresh(body: { searchId: string; page?: number }) {
   const { data, error: err } = await supabase.functions.invoke<RefreshResponse>('search-refresh', {
-    body: { searchId: search.value.id },
+    body,
   })
   if (err) {
     const ctx = (err as { context?: Response }).context
     const detail = ctx && (await ctx.json().catch(() => null))
     error.value = detail?.error ?? err.message
-  } else if (data && !data.refreshed) {
+    return null
+  }
+  return data
+}
+
+async function refresh() {
+  if (!search.value) return
+  const firstLoad = !search.value.last_refreshed_at
+  error.value = null
+  notice.value = null
+  const data = await invokeRefresh({ searchId: search.value.id })
+  if (data && !data.refreshed) {
     notice.value = t('browse.justRefreshed')
   } else if (data && firstLoad) {
     notice.value = t('browse.found', data.total)
@@ -121,6 +147,19 @@ async function refresh() {
     notice.value = data.newCount ? t('browse.foundNew', data.newCount) : t('browse.nothingNew')
   }
   await load()
+}
+
+/** The next result page; called when the end of the list scrolls into view. */
+async function loadMore() {
+  if (!search.value || !canLoadMore.value || loadingMore.value || refreshing.value) return
+  loadingMore.value = true
+  error.value = null
+  try {
+    await invokeRefresh({ searchId: search.value.id, page: search.value.loaded_pages + 1 })
+    await load()
+  } finally {
+    loadingMore.value = false
+  }
 }
 
 const listEl = useTemplateRef<HTMLElement>('listEl')
@@ -155,32 +194,15 @@ async function setHidden(result: SearchResult, hidden: boolean) {
   if (err) error.value = err.message
 }
 
-function startNew() {
-  editing.value = 'new'
-  formLabel.value = searches.value.length ? '' : t('browse.defaultLabel')
-  formUrl.value = ''
-}
-
-function startEdit() {
-  if (!search.value) return
-  editing.value = 'edit'
-  formLabel.value = search.value.label
-  formUrl.value = search.value.url
-}
-
-async function save() {
+async function save(fields: { label: string; url: string; params: OtodomSearchParams | null }) {
   saving.value = true
   error.value = null
   try {
-    const fields = {
-      label: formLabel.value.trim() || t('browse.defaultLabel'),
-      url: formUrl.value.trim(),
-    }
     // The first-time form shows without `editing` set, so anything but an edit is new.
     if (editing.value !== 'edit') {
       const { data, error: err } = await supabase
         .from('saved_searches')
-        .insert({ ...fields, hunt_id: huntId.value })
+        .insert({ ...fields, params: fields.params as never, hunt_id: huntId.value })
         .select()
         .single()
       if (err) throw err
@@ -188,7 +210,7 @@ async function save() {
     } else if (search.value) {
       const { error: err } = await supabase
         .from('saved_searches')
-        .update(fields)
+        .update({ ...fields, params: fields.params as never })
         .eq('id', search.value.id)
       if (err) throw err
     }
@@ -237,7 +259,30 @@ watch(
 watch(selectedId, (id, old) => {
   if (old !== undefined && id !== old) void loadResults()
 })
+// Reaching the end of the list loads the next page, once the user has actually
+// scrolled: a short list whose end is already on screen doesn't fetch by itself.
+const endEl = useTemplateRef<HTMLElement>('endEl')
+let observer: IntersectionObserver | undefined
+let scrolled = false
+const onScroll = () => {
+  if (window.scrollY > 0) scrolled = true
+}
+window.addEventListener('scroll', onScroll, { passive: true })
+watch(endEl, (el) => {
+  observer?.disconnect()
+  if (!el) return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (scrolled && entries.some((e) => e.isIntersecting)) void loadMore()
+    },
+    { rootMargin: '400px' },
+  )
+  observer.observe(el)
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
+  observer?.disconnect()
   clearTimeout(reloadTimer)
   if (channel) void supabase.removeChannel(channel)
 })
@@ -261,57 +306,18 @@ onBeforeUnmount(() => {
     <p v-if="!loaded" class="text-slate-500">{{ t('common.loading') }}</p>
 
     <!-- No saved search yet, or adding / editing one -->
-    <form
+    <SearchForm
       v-else-if="editing || !searches.length"
-      class="card space-y-3"
-      data-testid="search-form"
-      @submit.prevent="save"
-    >
-      <h2 class="font-semibold">
-        {{ editing === 'edit' ? t('browse.editTitle') : t('browse.setupTitle') }}
-      </h2>
-      <ol v-if="editing !== 'edit'" class="list-decimal space-y-1 pl-5 text-sm text-slate-600">
-        <li>{{ t('browse.step1') }}</li>
-        <li>{{ t('browse.step2') }}</li>
-        <li>{{ t('browse.step3') }}</li>
-      </ol>
-      <div>
-        <label class="label" for="search-label">{{ t('browse.label') }}</label>
-        <input
-          id="search-label"
-          v-model="formLabel"
-          maxlength="80"
-          class="input"
-          :placeholder="t('browse.defaultLabel')"
-        />
-      </div>
-      <div>
-        <label class="label" for="search-url">{{ t('browse.url') }}</label>
-        <input
-          id="search-url"
-          v-model="formUrl"
-          type="url"
-          inputmode="url"
-          required
-          class="input"
-          placeholder="https://www.otodom.pl/pl/wyniki/wynajem/mieszkanie/…"
-        />
-        <p v-if="formUrl && !urlValid" class="mt-1 text-xs text-rose-700">
-          {{ t('browse.urlInvalid') }}
-        </p>
-      </div>
-      <div class="flex flex-wrap gap-3">
-        <button v-if="editing" type="button" class="btn-secondary" @click="editing = null">
-          {{ t('common.cancel') }}
-        </button>
-        <button v-if="editing === 'edit'" type="button" class="btn-danger" @click="remove">
-          {{ t('browse.delete') }}
-        </button>
-        <button type="submit" class="btn-primary flex-1" :disabled="saving || !urlValid">
-          {{ saving ? t('common.saving') : t('browse.save') }}
-        </button>
-      </div>
-    </form>
+      :key="editing === 'edit' ? search?.id : 'new'"
+      :search="editing === 'edit' ? search : null"
+      :hunt-city="huntCity"
+      :criteria="criteria"
+      :saving="saving"
+      :cancellable="searches.length > 0"
+      @save="save"
+      @cancel="editing = null"
+      @remove="remove"
+    />
 
     <template v-else-if="search">
       <div class="flex items-center gap-2">
@@ -324,14 +330,14 @@ onBeforeUnmount(() => {
           <option v-for="s in searches" :key="s.id" :value="s.id">{{ s.label }}</option>
         </select>
         <p v-else class="min-w-0 flex-1 truncate font-semibold">{{ search.label }}</p>
-        <button type="button" class="btn-secondary px-3 py-2" @click="startEdit">
+        <button type="button" class="btn-secondary px-3 py-2" @click="editing = 'edit'">
           {{ t('browse.edit') }}
         </button>
         <button
           type="button"
           class="btn-secondary px-3 py-2"
           :aria-label="t('browse.addSearch')"
-          @click="startNew"
+          @click="editing = 'new'"
         >
           ＋
         </button>
@@ -394,6 +400,24 @@ onBeforeUnmount(() => {
       >
         {{ showHidden ? t('browse.hideHidden') : t('browse.showHidden', { n: hiddenCount }) }}
       </button>
+      <div v-if="canLoadMore" ref="endEl" class="text-center">
+        <button
+          type="button"
+          class="btn-secondary w-full"
+          :disabled="loadingMore"
+          data-testid="load-more"
+          @click="loadMore"
+        >
+          {{
+            loadingMore
+              ? t('browse.loadingMore')
+              : t('browse.loadMore', { page: search.loaded_pages + 1, total: search.total_pages })
+          }}
+        </button>
+      </div>
+      <p v-else-if="search.last_refreshed_at" class="text-center text-xs text-slate-400">
+        {{ t('browse.end') }}
+      </p>
       <p class="text-center text-xs text-slate-400">{{ t('browse.footer') }}</p>
     </template>
 

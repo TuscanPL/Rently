@@ -116,47 +116,88 @@ describe.skipIf(!stackUp)('search-refresh', () => {
         .order('external_id')
     ).data ?? []
 
-  it('reads up to three result pages and stores the cards', async () => {
+  it('a refresh reads page 1 and stores the cards', async () => {
     const { status, body } = await call({ searchId })
     expect(status).toBe(200)
-    expect(body).toEqual({ refreshed: true, total: 5, newCount: 5, pages: 3, totalResults: 95 })
-    expect(requests.map((u) => new URL(u).searchParams.get('page'))).toEqual([null, '2', '3'])
+    expect(body).toEqual({
+      refreshed: true,
+      total: 3,
+      newCount: 3,
+      page: 1,
+      loadedPages: 1,
+      totalPages: 3,
+      totalResults: 95,
+    })
+    expect(requests.map((u) => new URL(u).searchParams.get('page'))).toEqual([null])
     const rows = await results()
-    expect(rows.map((r) => r.external_id)).toEqual([
-      '66500001',
-      '66500002',
-      '66500003',
-      '66600002',
-      '66600003',
-    ])
+    expect(rows.map((r) => r.external_id)).toEqual(['66500001', '66500002', '66500003'])
     expect(rows[0]).toMatchObject({ title: '3 pokoje, balkon, blisko SKM Służewiec', rent: 4300 })
     const { data: search } = await user
       .from('saved_searches')
       .select('*')
       .eq('id', searchId)
       .single()
-    expect(search).toMatchObject({ last_total: 95, last_error: null })
+    expect(search).toMatchObject({
+      last_total: 95,
+      last_error: null,
+      loaded_pages: 1,
+      total_pages: 3,
+    })
     expect(search!.first_refreshed_at).toBe(search!.last_refreshed_at)
   })
 
-  it('does not fetch again within a minute', async () => {
+  it('loads further pages one at a time, in order, up to the last', async () => {
+    requests.length = 0
+    expect((await call({ searchId, page: 3 })).status).toBe(409)
+    const two = await call({ searchId, page: 2 })
+    expect(two.body).toMatchObject({
+      refreshed: true,
+      total: 1,
+      newCount: 0,
+      page: 2,
+      loadedPages: 2,
+    })
+    expect((await call({ searchId, page: 3 })).body).toMatchObject({ page: 3, loadedPages: 3 })
+    expect((await call({ searchId, page: 4 })).status).toBe(409)
+    expect(requests.map((u) => new URL(u).searchParams.get('page'))).toEqual(['2', '3'])
+    // Older ads reached by scrolling aren't "new".
+    const rows = await results()
+    const { data: search } = await user
+      .from('saved_searches')
+      .select('*')
+      .eq('id', searchId)
+      .single()
+    const deep = rows.find((r) => r.external_id === '66600003')!
+    expect(new Date(deep.first_seen_at).getTime()).toBe(
+      new Date(search!.first_refreshed_at!).getTime(),
+    )
+    expect(rows).toHaveLength(5)
+  })
+
+  it('does not refresh again within a minute', async () => {
     requests.length = 0
     clock = new Date('2026-10-21T10:00:30Z')
-    expect((await call({ searchId })).body).toMatchObject({ refreshed: false, total: 5, pages: 0 })
+    expect((await call({ searchId })).body).toMatchObject({
+      refreshed: false,
+      total: 5,
+      loadedPages: 3,
+    })
     expect(requests).toHaveLength(0)
   })
 
-  it('marks newly listed ads and keeps when the others were first seen', async () => {
+  it('a later refresh marks newly listed ads and starts again from page 1', async () => {
     clock = new Date('2026-10-21T12:00:00Z')
     extraAds = [{ id: 66509999, slug: 'brand-new-ID9' }]
     const { body } = await call({ searchId })
-    expect(body).toMatchObject({ refreshed: true, total: 6, newCount: 1 })
+    expect(body).toMatchObject({ refreshed: true, total: 4, newCount: 1, loadedPages: 1 })
     const rows = await results()
     const fresh = rows.find((r) => r.external_id === '66509999')!
     const old = rows.find((r) => r.external_id === '66500001')!
     expect(new Date(fresh.first_seen_at).toISOString()).toBe('2026-10-21T12:00:00.000Z')
     expect(new Date(old.first_seen_at).getTime()).toBeLessThan(Date.parse('2026-10-21T11:00:00Z'))
     expect(new Date(old.last_seen_at).toISOString()).toBe('2026-10-21T12:00:00.000Z')
+    // Page 2 can be loaded again after the refresh.
+    expect((await call({ searchId, page: 2 })).body).toMatchObject({ page: 2 })
   })
 
   it('lets members hide a card for the hunt but not edit or add cards', async () => {
@@ -171,14 +212,12 @@ describe.skipIf(!stackUp)('search-refresh', () => {
       .update({ title: 'hacked' } as never)
       .eq('search_id', searchId)
       .eq('external_id', '66500001')
-    const { error: insertError } = await user
-      .from('search_results')
-      .insert({
-        search_id: searchId,
-        external_id: 'x',
-        hunt_id: crypto.randomUUID(),
-        url: 'https://x',
-      })
+    const { error: insertError } = await user.from('search_results').insert({
+      search_id: searchId,
+      external_id: 'x',
+      hunt_id: crypto.randomUUID(),
+      url: 'https://x',
+    })
     expect(insertError).not.toBeNull()
     const rows = await results()
     expect(rows.find((r) => r.external_id === '66500001')!.title).not.toBe('hacked')

@@ -106,9 +106,19 @@ Adding a listing that matches another one in the hunt (same price ±2 %, area ±
 
 ### Browsing an Otodom search
 
-List → **Browse Otodom** shows the results of a saved Otodom search inside the app. Set your filters on otodom.pl, copy the results page address and paste it in. Each result card has the photo, price, m², rooms, district and private/agency, and tapping it opens a preview with all its photos. **Add to hunt** imports the full ad like a pasted link; **Hide** removes the card for everyone in the hunt.
+List → **Browse Otodom** shows the results of a saved Otodom search inside the app. There are two ways to set one up:
 
-Results are fetched **only when someone pulls down or taps Refresh**, never in the background. The `search-refresh` edge function reads up to 3 result pages per refresh, through the same per-site throttle as adding a listing (one Otodom request every 4 seconds), and skips the fetch if the search was refreshed less than a minute ago. Ads first seen in a later refresh are marked **New** for a day.
+- **Set filters**: pick the city and district, max rent, rooms and minimum m², and whether to show private owners only. **Use our hunt criteria** fills these from the hunt's settings. The app writes the Otodom results link for you, and **Check this search on Otodom ↗** opens it so you can see it's the right search.
+- **Paste a link**: set your filters on otodom.pl, copy the results page address and paste it in.
+
+Each result card has the photo, price, m², rooms, district and private/agency, and tapping it opens a preview with all its photos. **Add to hunt** imports the full ad like a pasted link; **Hide** removes the card for everyone in the hunt. The cards are stored in `search_results`, so everyone in the hunt sees the same list.
+
+Results are fetched **only when someone asks**, never in the background:
+
+- Pulling down (or tapping Refresh) reads page 1, the newest ads.
+- Scrolling to the end of the list (or tapping **Load more**) reads the next page. There's no page limit, so you can scroll through the whole search.
+
+The `search-refresh` edge function goes through the same per-site throttle as adding a listing (one Otodom request every 4 seconds). It skips a refresh if the search was refreshed less than a minute ago. Ads first seen in a later refresh are marked **New** for a day; older ads reached by scrolling are not.
 
 ### Public transport trips
 

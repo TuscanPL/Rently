@@ -21,6 +21,13 @@ export {
   type SearchItem,
   type SearchPage,
 } from './search/otodom.ts'
+export {
+  OTODOM_CITIES,
+  buildOtodomSearchUrl,
+  otodomCityFor,
+  withNewestFirst,
+  type OtodomSearchParams,
+} from './search/otodomUrl.ts'
 
 export const ADAPTERS: SiteAdapter[] = [
   otodomAdapter,

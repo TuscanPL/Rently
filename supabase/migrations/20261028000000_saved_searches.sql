@@ -1,19 +1,25 @@
 -- Saved Otodom searches and what they returned. A search is read only when a
--- member refreshes it (pull to refresh in Browse) — never on a schedule — by
--- the search-refresh edge function, which stores the light result cards here.
+-- member asks — pull to refresh reads page 1, scrolling to the end reads the
+-- next page — never on a schedule. The search-refresh edge function stores the
+-- light result cards here.
 
 create table public.saved_searches (
   id uuid primary key default gen_random_uuid(),
   hunt_id uuid not null references public.hunts (id) on delete cascade,
   label text not null check (length(trim(label)) between 1 and 80),
   url text not null check (url ~* '^https://(www\.)?otodom\.pl/(pl|en)/wyniki/'),
+  -- The filters, when the search was built in the app (null for a pasted link).
+  params jsonb,
   created_by uuid default auth.uid() references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),
   -- Written by the edge function.
   first_refreshed_at timestamptz,
   last_refreshed_at timestamptz,
   last_total int,
-  last_error text
+  last_error text,
+  -- Result pages read since the last refresh, and how many Otodom has.
+  loaded_pages int not null default 0,
+  total_pages int
 );
 create index saved_searches_hunt_idx on public.saved_searches (hunt_id);
 
@@ -55,7 +61,7 @@ create policy saved_searches_delete on public.saved_searches for delete to authe
   using (public.is_hunt_member(hunt_id));
 -- Members edit the label and URL; refresh bookkeeping is the function's.
 revoke update on public.saved_searches from authenticated;
-grant update (label, url) on public.saved_searches to authenticated;
+grant update (label, url, params) on public.saved_searches to authenticated;
 
 create policy search_results_select on public.search_results for select to authenticated
   using (public.is_hunt_member(hunt_id));
@@ -76,6 +82,8 @@ begin
   new.last_refreshed_at := null;
   new.last_total := null;
   new.last_error := null;
+  new.loaded_pages := 0;
+  new.total_pages := null;
   return new;
 end;
 $$;

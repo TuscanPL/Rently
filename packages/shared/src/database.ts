@@ -820,6 +820,9 @@ export type Database = {
           last_error: string | null
           last_refreshed_at: string | null
           last_total: number | null
+          loaded_pages: number
+          params: Json | null
+          total_pages: number | null
           url: string
         }
         ComputedFields: never
@@ -833,6 +836,9 @@ export type Database = {
           last_error?: string | null
           last_refreshed_at?: string | null
           last_total?: number | null
+          loaded_pages?: number
+          params?: Json | null
+          total_pages?: number | null
           url: string
         }
         Update: {
@@ -845,6 +851,9 @@ export type Database = {
           last_error?: string | null
           last_refreshed_at?: string | null
           last_total?: number | null
+          loaded_pages?: number
+          params?: Json | null
+          total_pages?: number | null
           url?: string
         }
         Relationships: [

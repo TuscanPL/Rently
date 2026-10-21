@@ -596,11 +596,10 @@
       "list": "Our listings",
       "browse": "Browse Otodom"
     },
-    "setupTitle": "Browse an Otodom search here",
+    "setupTitle": "Browse Otodom from here",
     "editTitle": "Edit search",
-    "step1": "On otodom.pl, search for flats to rent and set your filters (city, rooms, price, private owners…).",
-    "step2": "Copy the address of the results page.",
-    "step3": "Paste it below. Pull down on this screen whenever you want the latest results.",
+    "step1": "On otodom.pl, search for flats to rent and set your filters.",
+    "step2": "Copy the address of the results page and paste it here.",
     "label": "Name",
     "defaultLabel": "Otodom search",
     "url": "Otodom search link",
@@ -635,7 +634,32 @@
     "listed": "Listed",
     "openOtodom": "Open on Otodom",
     "sheetHelp": "This is what Otodom's results show. Add it to the hunt for the full ad, transit times and voting.",
-    "footer": "Results are only fetched when you refresh: up to 3 pages, newest first.",
-    "found": "No ads found | Found 1 ad | Found {n} ads"
+    "footer": "Nothing is fetched in the background: pull down for the newest ads, scroll down for more.",
+    "found": "No ads found | Found 1 ad | Found {n} ads",
+    "loadMore": "Load more (page {page} of {total})",
+    "loadingMore": "Loading the next page…",
+    "end": "That's all Otodom has for this search."
+  },
+  "searchForm": {
+    "mode": {
+      "build": "Set filters",
+      "paste": "Paste a link"
+    },
+    "useCriteria": "Use our hunt criteria",
+    "city": "City",
+    "district": "District",
+    "wholeCity": "Whole city",
+    "priceMax": "Max rent (zł)",
+    "priceHelp": "Otodom filters on rent without czynsz.",
+    "roomsMin": "Rooms from",
+    "roomsMax": "Rooms up to",
+    "areaMin": "Min area (m²)",
+    "privateOnly": "Private owners only (bez pośredników)",
+    "checkOnOtodom": "Check this search on Otodom",
+    "search": "Search",
+    "roomsRange": "{from}–{to} rooms",
+    "roomsFrom": "{n}+ rooms",
+    "upTo": "up to {price}",
+    "private": "private"
   }
 }

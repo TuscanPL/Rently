@@ -54,13 +54,29 @@ const ADS = [
   },
 ]
 
+const PAGE_TWO = [
+  {
+    ...ADS[1]!,
+    external_id: '66400001',
+    url: 'https://www.otodom.pl/pl/oferta/older-flat-ID4wOLD',
+    title: 'Older flat from page 2',
+    posted_at: '2026-10-01T09:00:00Z',
+  },
+]
+
 /** Answers search-refresh like the function: writes the given ads as this refresh's results. */
-async function fakeRefresh(page: Page, ads: () => (typeof ADS)[number][], calls: { n: number }) {
+async function fakeRefresh(
+  page: Page,
+  ads: (resultPage: number) => (typeof ADS)[number][],
+  calls: { n: number },
+) {
   await page.route('**/functions/v1/search-refresh', async (route) => {
     const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers })
     calls.n++
-    const { searchId } = route.request().postDataJSON() as { searchId: string }
+    const body = route.request().postDataJSON() as { searchId: string; page?: number }
+    const { searchId } = body
+    const resultPage = body.page ?? 1
     const { data: search } = await admin
       .from('saved_searches')
       .select('*')
@@ -72,7 +88,7 @@ async function fakeRefresh(page: Page, ads: () => (typeof ADS)[number][], calls:
       .select('external_id')
       .eq('search_id', searchId)
     const knownIds = new Set((known ?? []).map((r) => r.external_id))
-    const rows = ads().map((a) => ({
+    const rows = ads(resultPage).map((a) => ({
       ...a,
       search_id: searchId,
       hunt_id: search!.hunt_id,
@@ -80,24 +96,39 @@ async function fakeRefresh(page: Page, ads: () => (typeof ADS)[number][], calls:
     }))
     // Same columns in every row of a batch, as the function sends them.
     await admin.from('search_results').upsert(rows.filter((r) => knownIds.has(r.external_id)))
-    await admin
-      .from('search_results')
-      .upsert(
-        rows.filter((r) => !knownIds.has(r.external_id)).map((r) => ({ ...r, first_seen_at: now })),
-      )
+    await admin.from('search_results').upsert(
+      rows
+        .filter((r) => !knownIds.has(r.external_id))
+        // Older ads reached by scrolling aren't new.
+        .map((r) => ({ ...r, first_seen_at: resultPage > 1 ? search!.first_refreshed_at! : now })),
+    )
     await admin
       .from('saved_searches')
-      .update({
-        last_refreshed_at: now,
-        first_refreshed_at: search!.first_refreshed_at ?? now,
-        last_total: 42,
-        last_error: null,
-      })
+      .update(
+        resultPage > 1
+          ? { loaded_pages: resultPage }
+          : {
+              last_refreshed_at: now,
+              first_refreshed_at: search!.first_refreshed_at ?? now,
+              last_total: 42,
+              last_error: null,
+              loaded_pages: 1,
+              total_pages: 2,
+            },
+      )
       .eq('id', searchId)
-    const newCount = rows.filter((r) => !knownIds.has(r.external_id)).length
+    const newCount = resultPage > 1 ? 0 : rows.filter((r) => !knownIds.has(r.external_id)).length
     await route.fulfill({
       headers,
-      json: { refreshed: true, total: rows.length, newCount, pages: 1, totalResults: 42 },
+      json: {
+        refreshed: true,
+        total: rows.length,
+        newCount,
+        page: resultPage,
+        loadedPages: resultPage,
+        totalPages: 2,
+        totalResults: 42,
+      },
     })
   })
 }
@@ -118,7 +149,7 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
 }) => {
   let ads = [...ADS]
   const calls = { n: 0 }
-  await fakeRefresh(page, () => ads, calls)
+  await fakeRefresh(page, (p) => (p === 1 ? ads : PAGE_TWO), calls)
   // The ads' photos, served here (they'd come from Otodom's CDN).
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -136,12 +167,13 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
 
   // Setting up the search; only Otodom search links are accepted.
   const form = page.getByTestId('search-form')
+  await form.getByRole('tab', { name: 'Paste a link' }).click()
   await form.getByLabel('Otodom search link').fill('https://www.otodom.pl/pl/oferta/some-ad-ID1')
   await expect(form.getByText("That isn't an Otodom search results link")).toBeVisible()
-  await expect(form.getByRole('button', { name: 'Save search' })).toBeDisabled()
+  await expect(form.getByRole('button', { name: 'Search' })).toBeDisabled()
   await form.getByLabel('Otodom search link').fill(SEARCH_URL)
   await snap(page, 'browse-setup')
-  await form.getByRole('button', { name: 'Save search' }).click()
+  await form.getByRole('button', { name: 'Search' }).click()
 
   // Saving fetches the first results straight away.
   const cards = page.getByTestId('search-result')
@@ -201,13 +233,82 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   const fresh = cards.filter({ hasText: 'Brand new flat' })
   await expect(fresh).toContainText('New')
   await expect(cards.filter({ hasText: 'Kawalerka Ochota' })).toHaveCount(0)
+
+  // Scrolling to the end loads the next page, which isn't marked new.
+  await expect(page.getByTestId('load-more')).toHaveText('Load more (page 2 of 2)')
+  // (The list here is too short to scroll; on a full page scrolling to the end does this.)
+  await page.getByTestId('load-more').click()
+  const older = cards.filter({ hasText: 'Older flat from page 2' })
+  await expect(older).toHaveCount(1)
+  expect(calls.n).toBe(3)
+  await expect(older).not.toContainText('New')
+  await expect(page.getByText("That's all Otodom has for this search.")).toBeVisible()
+  await expect(page.getByTestId('load-more')).toHaveCount(0)
+})
+
+test('build a search from filters and the hunt criteria', async ({ page }) => {
+  const calls = { n: 0 }
+  await fakeRefresh(page, (p) => (p === 1 ? ADS : PAGE_TWO), calls)
+  await newHunt(page, 'Builder hunt')
+  const huntId = page.url().split('/h/')[1]!.split('/')[0]!
+  await admin
+    .from('hunts')
+    .update({ criteria: { maxTotalMonthly: 5000, minRooms: 3, minAreaM2: 55, privateOnly: true } })
+    .eq('id', huntId)
+  await page.goto(`/#/h/${huntId}/list/browse`)
+  await page.reload()
+
+  const form = page.getByTestId('search-form')
+  await expect(form.getByRole('tab', { name: 'Set filters' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await form.getByRole('button', { name: 'Use our hunt criteria' }).click()
+  await expect(form.getByLabel('Max rent (zł)')).toHaveValue('5000')
+  await expect(form.getByLabel('Rooms from')).toHaveValue('3')
+  await expect(form.getByLabel('Min area (m²)')).toHaveValue('55')
+  await expect(form.getByLabel('Private owners only (bez pośredników)')).toBeChecked()
+  await form.getByLabel('District').selectOption({ label: 'Mokotów' })
+  // formatPLN groups thousands with a no-break space.
+  const label = /Mokotów · 3\+ rooms · up to 5\s000\szł · private/
+  await expect(form.getByLabel('Name')).toHaveAttribute('placeholder', label)
+
+  const href = new URL((await form.getByTestId('built-url').getAttribute('href'))!)
+  expect(href.pathname).toBe(
+    '/pl/wyniki/wynajem/mieszkanie/mazowieckie/warszawa/warszawa/warszawa/mokotow',
+  )
+  expect(href.searchParams.get('priceMax')).toBe('5000')
+  expect(href.searchParams.get('areaMin')).toBe('55')
+  expect(href.searchParams.get('roomsNumber')).toBe('[THREE,FOUR,FIVE,SIX,SEVEN,EIGHT,NINE,TEN]')
+  expect(href.searchParams.get('ownerTypeSingleSelect')).toBe('PRIVATE')
+  expect(href.searchParams.get('by')).toBe('LATEST')
+  await snap(page, 'browse-builder')
+
+  await form.getByRole('button', { name: 'Search' }).click()
+  await expect(page.getByTestId('search-result')).toHaveCount(2)
+  await expect(page.getByText(label)).toBeVisible()
+  const { data: saved } = await admin
+    .from('saved_searches')
+    .select('url, params')
+    .eq('hunt_id', huntId)
+    .single()
+  expect(saved!.url).toBe(href.toString())
+  expect(saved!.params).toMatchObject({ city: 'warszawa', district: 'mokotow', roomsMin: 3 })
+
+  // Editing reopens the filters as they were.
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await expect(form.getByLabel('District')).toHaveValue('mokotow')
+  await expect(form.getByLabel('Max rent (zł)')).toHaveValue('5000')
+  await form.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByTestId('search-result')).toHaveCount(2)
 })
 
 test('a search Otodom does not answer shows why', async ({ page }) => {
   await newHunt(page, 'Offline browse')
   const form = page.getByTestId('search-form')
+  await form.getByRole('tab', { name: 'Paste a link' }).click()
   await form.getByLabel('Otodom search link').fill(SEARCH_URL)
-  await form.getByRole('button', { name: 'Save search' }).click()
+  await form.getByRole('button', { name: 'Search' }).click()
   // The real function runs; Otodom is unreachable from here.
   // Unreachable, or "busy" when other adds are queued for otodom.pl in the shared throttle.
   await expect(page.getByTestId('search-error')).toHaveText(
@@ -215,4 +316,30 @@ test('a search Otodom does not answer shows why', async ({ page }) => {
     { timeout: 30_000 },
   )
   await expect(page.getByTestId('search-status')).toContainText('Not loaded yet')
+})
+
+test('scrolling to the end of a long list loads the next page', async ({ page }) => {
+  const many = Array.from({ length: 20 }, (_, i) => ({
+    ...ADS[0]!,
+    external_id: `6680${String(i).padStart(4, '0')}`,
+    url: `https://www.otodom.pl/pl/oferta/flat-${i}-ID${i}`,
+    title: `Flat number ${i + 1}`,
+  }))
+  const calls = { n: 0 }
+  await fakeRefresh(page, (p) => (p === 1 ? many : PAGE_TWO), calls)
+  await newHunt(page, 'Scroll hunt')
+  const form = page.getByTestId('search-form')
+  await form.getByRole('tab', { name: 'Paste a link' }).click()
+  await form.getByLabel('Otodom search link').fill(SEARCH_URL)
+  await form.getByRole('button', { name: 'Search' }).click()
+  const cards = page.getByTestId('search-result')
+  await expect(cards).toHaveCount(20)
+  expect(calls.n).toBe(1)
+
+  // Nothing more loads until the user scrolls; then reaching the end does it.
+  await page.waitForTimeout(500)
+  expect(calls.n).toBe(1)
+  await page.mouse.wheel(0, 20_000)
+  await expect(cards).toHaveCount(21)
+  expect(calls.n).toBe(2)
 })

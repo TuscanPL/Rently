@@ -7,9 +7,10 @@ import { BROWSER_HEADERS, HttpError, json, withHttp } from './http.ts'
 type Db = SupabaseClient<Database>
 type ResultRow = Database['public']['Tables']['search_results']['Insert']
 
-// Refreshes one saved Otodom search when a member asks (pull to refresh in
-// Browse). Never scheduled: one tap reads at most a few result pages, spaced
-// out through the same per-site throttle as adding a listing.
+// Reads one saved Otodom search when a member asks: pull to refresh reads page 1
+// (newest ads), scrolling to the end of the list reads the next page. Never
+// scheduled; every request is one page, through the same per-site throttle as
+// adding a listing.
 
 const SITE_INTERVAL_MS = 4000
 /** A refresh within this long of the last one returns the stored results. */
@@ -21,8 +22,6 @@ export interface SearchEnv {
   serviceRoleKey: string
   fetchExternal?: typeof fetch
   sleep?: (ms: number) => Promise<void>
-  /** Result pages read per refresh. */
-  maxPages?: number
   maxWaitMs?: number
   now?: () => Date
 }
@@ -32,14 +31,22 @@ export interface SearchRefreshResponse {
   refreshed: boolean
   /** Ads currently in the results (on the pages read). */
   total: number
-  /** Ads seen for the first time in this refresh. */
+  /** Ads seen for the first time in this refresh (always 0 when loading more). */
   newCount: number
-  pages: number
+  /** The page just read. */
+  page: number
+  /** Pages read since the last refresh. */
+  loadedPages: number
+  totalPages: number | null
   /** Otodom's own count of results, which can exceed what we read. */
   totalResults: number | null
 }
 
-const bodySchema = z.object({ searchId: z.string().uuid() })
+const bodySchema = z.object({
+  searchId: z.string().uuid(),
+  /** Omitted (or 1): refresh. 2+: load that next page of the current results. */
+  page: z.number().int().min(1).max(500).optional(),
+})
 
 /** "2026-10-18 09:00:00" (Otodom, Warsaw time) → ISO; the day is what matters here. */
 function postedAt(value: string | null): string | null {
@@ -108,7 +115,19 @@ export function createSearchHandler(env: SearchEnv) {
     if (!search) throw new HttpError(404, 'Search not found')
 
     const started = now()
-    if (
+    const page = body.data.page ?? 1
+    const loadMore = page > 1
+
+    if (loadMore) {
+      // Only the page after the ones already read, of a search that's been refreshed.
+      if (!search.last_refreshed_at) throw new HttpError(409, 'Refresh the search first')
+      if (
+        page !== search.loaded_pages + 1 ||
+        (search.total_pages != null && page > search.total_pages)
+      ) {
+        throw new HttpError(409, 'No such page to load')
+      }
+    } else if (
       search.last_refreshed_at &&
       started.getTime() - Date.parse(search.last_refreshed_at) < MIN_REFRESH_GAP_MS
     ) {
@@ -121,31 +140,21 @@ export function createSearchHandler(env: SearchEnv) {
         refreshed: false,
         total: count ?? 0,
         newCount: 0,
-        pages: 0,
+        page: search.loaded_pages,
+        loadedPages: search.loaded_pages,
+        totalPages: search.total_pages,
         totalResults: search.last_total,
       }
       return json(response)
     }
 
-    const items = new Map<string, SearchItem>()
-    let pages = 0
-    let totalPages = 1
-    let totalResults: number | null = null
+    let parsed: ReturnType<typeof parseOtodomSearch>
     try {
-      for (let page = 1; page <= Math.min(totalPages, env.maxPages ?? 3); page++) {
-        const html = await fetchPage(otodomSearchPageUrl(search.url, page))
-        const parsed = parseOtodomSearch(html, search.url)
-        pages++
-        if (page === 1) {
-          totalPages = parsed.totalPages
-          totalResults = parsed.totalResults
-          if (parsed.items.length === 0 && !html.includes('__NEXT_DATA__')) {
-            console.error('search: no result data on the page', html.slice(0, 300))
-            throw new HttpError(502, "Otodom didn't send search results")
-          }
-        }
-        for (const item of parsed.items)
-          if (!items.has(item.externalId)) items.set(item.externalId, item)
+      const html = await fetchPage(otodomSearchPageUrl(search.url, page))
+      parsed = parseOtodomSearch(html, search.url)
+      if (parsed.items.length === 0 && !html.includes('__NEXT_DATA__')) {
+        console.error('search: no result data on the page', html.slice(0, 300))
+        throw new HttpError(502, "Otodom didn't send search results")
       }
     } catch (e) {
       const message = e instanceof HttpError ? e.message : 'Refresh failed'
@@ -154,13 +163,17 @@ export function createSearchHandler(env: SearchEnv) {
     }
 
     const seenAt = started.toISOString()
+    const items = [...new Map(parsed.items.map((i) => [i.externalId, i])).values()]
     const { data: known } = await admin
       .from('search_results')
       .select('external_id')
       .eq('search_id', search.id)
-      .in('external_id', [...items.keys()])
+      .in(
+        'external_id',
+        items.map((i) => i.externalId),
+      )
     const knownIds = new Set((known ?? []).map((r) => r.external_id))
-    const rows: ResultRow[] = [...items.values()].map((i) => ({
+    const rows: ResultRow[] = items.map((i) => ({
       search_id: search.id,
       hunt_id: search.hunt_id,
       external_id: i.externalId,
@@ -177,37 +190,48 @@ export function createSearchHandler(env: SearchEnv) {
       photos: i.photos,
       posted_at: postedAt(i.postedAt),
       last_seen_at: seenAt,
-      // first_seen_at keeps its default on insert and isn't sent, so an update keeps it.
+      // first_seen_at isn't sent, so an update keeps it; new rows get it below.
     }))
+    const fresh = rows.filter((r) => !knownIds.has(r.external_id)).map((r) => r.external_id)
     if (rows.length) {
       const { error } = await admin.from('search_results').upsert(rows)
       if (error) throw new HttpError(500, `Could not save results: ${error.message}`)
-      // Ads seen before keep their first_seen_at; new ones get this refresh's time.
-      const fresh = rows.filter((r) => !knownIds.has(r.external_id)).map((r) => r.external_id)
       if (fresh.length) {
+        // Turning up in a refresh means newly listed. Ads first reached by
+        // scrolling further down are older ones, so they don't count as new.
         await admin
           .from('search_results')
-          .update({ first_seen_at: seenAt })
+          .update({ first_seen_at: loadMore ? search.first_refreshed_at! : seenAt })
           .eq('search_id', search.id)
           .in('external_id', fresh)
       }
     }
+
+    const totalPages = loadMore ? (search.total_pages ?? parsed.totalPages) : parsed.totalPages
     await admin
       .from('saved_searches')
-      .update({
-        last_refreshed_at: seenAt,
-        first_refreshed_at: search.first_refreshed_at ?? seenAt,
-        last_total: totalResults,
-        last_error: null,
-      })
+      .update(
+        loadMore
+          ? { loaded_pages: page, last_error: null }
+          : {
+              last_refreshed_at: seenAt,
+              first_refreshed_at: search.first_refreshed_at ?? seenAt,
+              last_total: parsed.totalResults,
+              loaded_pages: 1,
+              total_pages: parsed.totalPages,
+              last_error: null,
+            },
+      )
       .eq('id', search.id)
 
     const response: SearchRefreshResponse = {
       refreshed: true,
       total: rows.length,
-      newCount: rows.filter((r) => !knownIds.has(r.external_id)).length,
-      pages,
-      totalResults,
+      newCount: loadMore ? 0 : fresh.length,
+      page,
+      loadedPages: page,
+      totalPages,
+      totalResults: loadMore ? search.last_total : parsed.totalResults,
     }
     return json(response)
   })
