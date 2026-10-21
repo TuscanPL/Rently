@@ -25,7 +25,6 @@ const step = ref<'input' | 'form'>('input')
 const draft = ref<ListingDraft | null>(null)
 const busy = ref<string | null>(null)
 const error = ref<string | null>(null)
-const canPaste = typeof navigator.clipboard?.readText === 'function'
 
 const urlValid = computed(() => {
   try {
@@ -34,15 +33,6 @@ const urlValid = computed(() => {
     return false
   }
 })
-
-async function paste() {
-  try {
-    const clip = await navigator.clipboard.readText()
-    url.value = firstUrl(clip) ?? clip.trim()
-  } catch {
-    // Permission denied: the user can long-press and paste.
-  }
-}
 
 async function finish(promise: Promise<Awaited<ReturnType<typeof ingest>>>) {
   error.value = null
@@ -132,21 +122,16 @@ onBeforeUnmount(() => files.value.forEach((f) => URL.revokeObjectURL(f.preview))
     <form v-if="step === 'input' && mode === 'link'" class="space-y-4" @submit.prevent="addLink">
       <div>
         <label class="label" for="add-url">{{ t('add.urlLabel') }}</label>
-        <div class="flex gap-2">
-          <input
-            id="add-url"
-            v-model="url"
-            type="url"
-            inputmode="url"
-            required
-            autofocus
-            class="input"
-            placeholder="https://www.otodom.pl/pl/oferta/…"
-          />
-          <button v-if="canPaste" type="button" class="btn-secondary shrink-0" @click="paste">
-            {{ t('add.paste') }}
-          </button>
-        </div>
+        <input
+          id="add-url"
+          v-model="url"
+          type="url"
+          inputmode="url"
+          required
+          autofocus
+          class="input"
+          placeholder="https://www.otodom.pl/pl/oferta/…"
+        />
         <p class="mt-1 text-xs text-slate-500">{{ t('add.urlHelp') }}</p>
       </div>
       <button

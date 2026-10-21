@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { createTransitHandler, nextArrival, pickTrip, type TransitResponse } from './index.ts'
-import { planSchema } from './transit.ts'
+import { encodePolyline } from '@at/shared'
+import { legPath, planSchema } from './transit.ts'
 
 // Integration tests run against the local stack (`supabase start`) and are skipped
 // when it isn't running. Transitous is faked: it isn't reachable from CI.
@@ -66,10 +67,34 @@ describe('pickTrip', () => {
       departsAt: '2026-10-27T07:19:00Z',
       arrivesAt: '2026-10-27T08:00:00Z',
       legs: [
-        { mode: 'WALK', line: null, from: 'START', to: 'Bokserska', minutes: 5 },
-        { mode: 'TRAM', line: '17', from: 'Bokserska', to: 'Wilanowska', minutes: 15 },
-        { mode: 'SUBWAY', line: 'M1', from: 'Wilanowska', to: 'Centrum', minutes: 17 },
-        { mode: 'WALK', line: null, from: 'Centrum', to: 'END', minutes: 4 },
+        expect.objectContaining({
+          mode: 'WALK',
+          line: null,
+          from: 'START',
+          to: 'Bokserska',
+          minutes: 5,
+        }),
+        expect.objectContaining({
+          mode: 'TRAM',
+          line: '17',
+          from: 'Bokserska',
+          to: 'Wilanowska',
+          minutes: 15,
+        }),
+        expect.objectContaining({
+          mode: 'SUBWAY',
+          line: 'M1',
+          from: 'Wilanowska',
+          to: 'Centrum',
+          minutes: 17,
+        }),
+        expect.objectContaining({
+          mode: 'WALK',
+          line: null,
+          from: 'Centrum',
+          to: 'END',
+          minutes: 4,
+        }),
       ],
     })
   })
@@ -105,6 +130,76 @@ describe('pickTrip', () => {
   it('reports no route when the planner found nothing', () => {
     expect(pickTrip(planSchema.parse({ itineraries: [], direct: [] }))).toEqual({
       status: 'no_route',
+    })
+  })
+})
+
+describe('legPath', () => {
+  const tram: [number, number][] = [
+    [52.1806, 21.0006],
+    [52.1855, 21.0042],
+    [52.1897, 21.0081],
+  ]
+  const leg = (points: string, precision?: number, from = { lat: 52.1806, lon: 21.0006 }) => ({
+    mode: 'TRAM',
+    from,
+    legGeometry: { points, ...(precision ? { precision } : {}) },
+  })
+
+  it('keeps the shape with its stated precision', () => {
+    expect(legPath(leg(encodePolyline(tram, 6), 6) as never)).toEqual({
+      points: encodePolyline(tram, 6),
+      precision: 6,
+    })
+  })
+
+  it('works out an unstated precision from where the leg starts', () => {
+    for (const p of [5, 7]) {
+      expect(legPath(leg(encodePolyline(tram, p)) as never)?.precision).toBe(p)
+    }
+  })
+
+  it('drops a shape that does not start near the leg', () => {
+    const elsewhere = encodePolyline(
+      [
+        [50.06, 19.94],
+        [50.07, 19.95],
+      ],
+      6,
+    )
+    expect(legPath(leg(elsewhere, 6) as never)).toBeNull()
+  })
+
+  it('is null without geometry', () => {
+    expect(legPath({ mode: 'WALK' } as never)).toBeNull()
+  })
+
+  it('stores stop coordinates and the shape on each leg', () => {
+    const trip = pickTrip(
+      planSchema.parse({
+        itineraries: [
+          {
+            duration: 600,
+            legs: [
+              {
+                mode: 'TRAM',
+                duration: 600,
+                routeShortName: '17',
+                from: { name: 'A', lat: 52.1806, lon: 21.0006 },
+                to: { name: 'B', lat: 52.1897, lon: 21.0081 },
+                legGeometry: { points: encodePolyline(tram, 7), precision: 7 },
+              },
+            ],
+          },
+        ],
+      }),
+    )
+    expect(trip.status === 'ok' && trip.legs[0]).toMatchObject({
+      fromLat: 52.1806,
+      fromLng: 21.0006,
+      toLat: 52.1897,
+      toLng: 21.0081,
+      path: { points: encodePolyline(tram, 7), precision: 7 },
     })
   })
 })
