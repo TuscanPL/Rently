@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PIN_KINDS, type LatLng, type PinKind } from '@at/shared'
 import { PIN_ICONS, type Pin } from '@/lib/geo'
+import { arrivalLabel } from '@/lib/transit'
 import { useHuntsStore } from '@/stores/hunts'
 import { usePinsStore } from '@/stores/pins'
 import LocationPicker from './LocationPicker.vue'
@@ -17,6 +18,9 @@ const editing = ref<'new' | string | null>(null)
 const label = ref('')
 const kind = ref<PinKind>('work')
 const location = ref<LatLng | null>(null)
+const arriveWeekday = ref(2)
+const arriveTime = ref('09:00')
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
 const saving = ref(false)
 const error = ref<string | null>(null)
 
@@ -25,6 +29,8 @@ function startAdd() {
   label.value = ''
   kind.value = 'work'
   location.value = null
+  arriveWeekday.value = 2
+  arriveTime.value = '09:00'
   error.value = null
 }
 
@@ -33,6 +39,8 @@ function startEdit(pin: Pin) {
   label.value = pin.label
   kind.value = pin.kind
   location.value = { lat: pin.lat, lng: pin.lng }
+  arriveWeekday.value = pin.arrive_weekday
+  arriveTime.value = pin.arrive_time.slice(0, 5)
   error.value = null
 }
 
@@ -43,7 +51,13 @@ async function save() {
   }
   saving.value = true
   error.value = null
-  const input = { label: label.value.trim(), kind: kind.value, ...location.value }
+  const input = {
+    label: label.value.trim(),
+    kind: kind.value,
+    ...location.value,
+    arrive_weekday: arriveWeekday.value,
+    arrive_time: arriveTime.value,
+  }
   try {
     if (editing.value === 'new') await pinsStore.add(input)
     else await pinsStore.update(editing.value!, input)
@@ -80,7 +94,10 @@ async function remove(pin: Pin) {
         >
         <span class="min-w-0 flex-1">
           <span class="block truncate font-medium">{{ pin.label }}</span>
-          <span class="text-xs text-slate-500">{{ t(`pins.kind.${pin.kind}`) }}</span>
+          <span class="text-xs text-slate-500">
+            {{ t(`pins.kind.${pin.kind}`) }} ·
+            {{ t('transit.arriveBy', { when: arrivalLabel(pin.arrive_weekday, pin.arrive_time) }) }}
+          </span>
         </span>
         <button type="button" class="text-sm text-brand-700" @click="startEdit(pin)">
           {{ t('pins.edit') }}
@@ -123,6 +140,22 @@ async function remove(pin: Pin) {
           </select>
         </div>
       </div>
+      <fieldset class="space-y-3">
+        <legend class="label">{{ t('transit.arriveLegend') }}</legend>
+        <p class="-mt-1 text-xs text-slate-500">{{ t('transit.arriveHelp') }}</p>
+        <div>
+          <label class="label" for="pin-weekday">{{ t('transit.weekday') }}</label>
+          <select id="pin-weekday" v-model.number="arriveWeekday" class="input">
+            <option v-for="day in WEEKDAYS" :key="day" :value="day">
+              {{ arrivalLabel(day, '00:00').split(' ')[0] }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="label" for="pin-time">{{ t('transit.time') }}</label>
+          <input id="pin-time" v-model="arriveTime" type="time" required class="input" />
+        </div>
+      </fieldset>
       <LocationPicker v-model="location" :city="huntsStore.current?.city" />
       <div class="flex gap-3">
         <button type="button" class="btn-secondary" @click="editing = null">

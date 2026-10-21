@@ -15,6 +15,7 @@ import { PIN_ICONS } from '@/lib/geo'
 import { listingTotal, sortedPhotos, type ListingWithPhotos } from '@/lib/listings'
 import { useListingsStore } from '@/stores/listings'
 import { usePinsStore } from '@/stores/pins'
+import { useRoutesStore } from '@/stores/routes'
 import ListingImage from '@/components/ListingImage.vue'
 
 const { t, d } = useI18n()
@@ -22,6 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const listingsStore = useListingsStore()
 const pinsStore = usePinsStore()
+const routesStore = useRoutesStore()
 const huntId = route.params.huntId as string
 
 const ids = computed(() => parseCompareIds(route.query.ids))
@@ -106,6 +108,19 @@ const rows = computed<Row[]>(() => [
       formatDistance,
       'min',
       PIN_ICONS[pin.kind],
+    ),
+  ),
+  ...pinsStore.pins.map((pin) =>
+    numericRow(
+      `transit-${pin.id}`,
+      t('transit.compareRow', { label: pin.label }),
+      (l) => {
+        const route = routesStore.get(l.id, pin.id)
+        return route?.status === 'ok' ? route.duration_min : null
+      },
+      (n) => (n == null ? '—' : t('transit.minutes', { n })),
+      'min',
+      '🚆',
     ),
   ),
   textRow('availableFrom', t('form.availableFrom'), (l) =>

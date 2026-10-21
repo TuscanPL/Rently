@@ -546,5 +546,20 @@
     "unconfigured": "Push isn't set up for this app yet (no VAPID key). The list under the bell still works.",
     "denied": "Notifications are blocked for this site. Allow them in the browser settings, then come back.",
     "permissionDenied": "The browser didn't allow notifications."
+  },
+  "transit": {
+    "minutes": "{n} min",
+    "transfers": "no transfers | 1 transfer | {n} transfers",
+    "direct": "no transfers",
+    "arriveBy": "arrive {when}",
+    "noRoute": "No public transport route found.",
+    "failed": "Couldn't look up the public transport trip. We'll try again later.",
+    "lookingUp": "Looking up the public transport trip…",
+    "arriveLegend": "Public transport trips should arrive by",
+    "arriveHelp": "We look up the trip from each listing once, for the next such day, and keep it.",
+    "weekday": "Day",
+    "time": "Time (Warsaw)",
+    "compareRow": "{label} by public transport",
+    "credit": "Public transport trips planned with"
   }
 }

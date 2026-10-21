@@ -357,6 +357,64 @@ export type Database = {
           },
         ]
       }
+      listing_routes: {
+        Row: {
+          arrives_at: string | null
+          computed_at: string
+          departs_at: string | null
+          duration_min: number | null
+          legs: NonNullable<Json>
+          listing_id: string
+          pin_id: string
+          provider: string
+          status: string
+          transfers: number | null
+          walk_min: number | null
+        }
+        ComputedFields: never
+        Insert: {
+          arrives_at?: string | null
+          computed_at?: string
+          departs_at?: string | null
+          duration_min?: number | null
+          legs?: NonNullable<Json>
+          listing_id: string
+          pin_id: string
+          provider?: string
+          status: string
+          transfers?: number | null
+          walk_min?: number | null
+        }
+        Update: {
+          arrives_at?: string | null
+          computed_at?: string
+          departs_at?: string | null
+          duration_min?: number | null
+          legs?: NonNullable<Json>
+          listing_id?: string
+          pin_id?: string
+          provider?: string
+          status?: string
+          transfers?: number | null
+          walk_min?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'listing_routes_listing_id_fkey'
+            columns: ['listing_id']
+            isOneToOne: false
+            referencedRelation: 'listings'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'listing_routes_pin_id_fkey'
+            columns: ['pin_id']
+            isOneToOne: false
+            referencedRelation: 'pins'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       listings: {
         Row: {
           added_by: string | null
@@ -594,6 +652,8 @@ export type Database = {
       }
       pins: {
         Row: {
+          arrive_time: string
+          arrive_weekday: number
           hunt_id: string
           id: string
           kind: Database['public']['Enums']['pin_kind']
@@ -603,6 +663,8 @@ export type Database = {
         }
         ComputedFields: never
         Insert: {
+          arrive_time?: string
+          arrive_weekday?: number
           hunt_id: string
           id?: string
           kind?: Database['public']['Enums']['pin_kind']
@@ -611,6 +673,8 @@ export type Database = {
           lng: number
         }
         Update: {
+          arrive_time?: string
+          arrive_weekday?: number
           hunt_id?: string
           id?: string
           kind?: Database['public']['Enums']['pin_kind']
