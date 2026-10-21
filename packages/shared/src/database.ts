@@ -809,6 +809,159 @@ export type Database = {
           },
         ]
       }
+      saved_searches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          first_refreshed_at: string | null
+          hunt_id: string
+          id: string
+          label: string
+          last_error: string | null
+          last_refreshed_at: string | null
+          last_total: number | null
+          loaded_pages: number
+          params: Json | null
+          total_pages: number | null
+          url: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          first_refreshed_at?: string | null
+          hunt_id: string
+          id?: string
+          label: string
+          last_error?: string | null
+          last_refreshed_at?: string | null
+          last_total?: number | null
+          loaded_pages?: number
+          params?: Json | null
+          total_pages?: number | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          first_refreshed_at?: string | null
+          hunt_id?: string
+          id?: string
+          label?: string
+          last_error?: string | null
+          last_refreshed_at?: string | null
+          last_total?: number | null
+          loaded_pages?: number
+          params?: Json | null
+          total_pages?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'saved_searches_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'saved_searches_hunt_id_fkey'
+            columns: ['hunt_id']
+            isOneToOne: false
+            referencedRelation: 'hunts'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      search_results: {
+        Row: {
+          address: string | null
+          admin_fee: number | null
+          area_m2: number | null
+          district: string | null
+          external_id: string
+          first_seen_at: string
+          floor: number | null
+          hidden_at: string | null
+          hidden_by: string | null
+          hunt_id: string
+          last_seen_at: string
+          photos: string[]
+          posted_at: string | null
+          private_owner: boolean | null
+          rent: number | null
+          rooms: number | null
+          search_id: string
+          title: string | null
+          url: string
+        }
+        ComputedFields: never
+        Insert: {
+          address?: string | null
+          admin_fee?: number | null
+          area_m2?: number | null
+          district?: string | null
+          external_id: string
+          first_seen_at?: string
+          floor?: number | null
+          hidden_at?: string | null
+          hidden_by?: string | null
+          hunt_id: string
+          last_seen_at?: string
+          photos?: string[]
+          posted_at?: string | null
+          private_owner?: boolean | null
+          rent?: number | null
+          rooms?: number | null
+          search_id: string
+          title?: string | null
+          url: string
+        }
+        Update: {
+          address?: string | null
+          admin_fee?: number | null
+          area_m2?: number | null
+          district?: string | null
+          external_id?: string
+          first_seen_at?: string
+          floor?: number | null
+          hidden_at?: string | null
+          hidden_by?: string | null
+          hunt_id?: string
+          last_seen_at?: string
+          photos?: string[]
+          posted_at?: string | null
+          private_owner?: boolean | null
+          rent?: number | null
+          rooms?: number | null
+          search_id?: string
+          title?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'search_results_hidden_by_fkey'
+            columns: ['hidden_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'search_results_hunt_id_fkey'
+            columns: ['hunt_id']
+            isOneToOne: false
+            referencedRelation: 'hunts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'search_results_search_id_fkey'
+            columns: ['search_id']
+            isOneToOne: false
+            referencedRelation: 'saved_searches'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       signup_allowlist: {
         Row: {
           added_at: string

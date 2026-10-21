@@ -14,6 +14,20 @@ export { IMPORTANT_FIELDS } from './types.ts'
 export { extractFromText } from './text.ts'
 export { canonicalizeUrl, sourceForUrl, firstUrl, titleFromUrl, hostOf } from './url.ts'
 export { buildResult, sanitize as sanitizeListing } from './result.ts'
+export {
+  isOtodomSearchUrl,
+  otodomSearchPageUrl,
+  parseOtodomSearch,
+  type SearchItem,
+  type SearchPage,
+} from './search/otodom.ts'
+export {
+  OTODOM_CITIES,
+  buildOtodomSearchUrl,
+  otodomCityFor,
+  withNewestFirst,
+  type OtodomSearchParams,
+} from './search/otodomUrl.ts'
 
 export const ADAPTERS: SiteAdapter[] = [
   otodomAdapter,
