@@ -106,7 +106,6 @@ export const router = createRouter({
           path: 'pipeline',
           name: 'pipeline',
           component: () => import('@/views/PipelineView.vue'),
-          meta: { wide: true },
         },
         {
           path: 'settings',

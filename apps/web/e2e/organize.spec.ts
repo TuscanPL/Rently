@@ -202,7 +202,7 @@ test('criteria badges, list sort and filters, pipeline, viewing note and live co
   await expect(page.getByText(/moved it to Applied/)).toBeVisible()
 })
 
-test('drag a card between pipeline columns on a desktop', async ({ browser }) => {
+test('drag a card between pipeline stages on a desktop', async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1366, height: 900 },
     isMobile: false,
@@ -246,4 +246,41 @@ test('drag a card between pipeline columns on a desktop', async ({ browser }) =>
   await snap(page, 'detail-desktop')
   await page.getByRole('link', { name: 'Settings' }).click()
   await snap(page, 'settings-desktop')
+})
+
+test('drag a card down to another pipeline stage with a finger', async ({ page }) => {
+  await newHunt(page, 'Touch hunt')
+  await addListing(page, 'Corner flat\n3 pokoje, 70 m2. Cena: 4500 zł.', 'Ochota')
+  await page.getByRole('link', { name: 'Pipeline' }).click()
+
+  const handle = page
+    .getByTestId('pipeline-card')
+    .filter({ hasText: 'Corner flat' })
+    .getByTestId('drag-handle')
+  const from = (await handle.boundingBox())!
+  const to = (await page.getByTestId('column-applied').boundingBox())!
+  const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 }
+  const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 }
+
+  // Real touch events (pointerType "touch"), as a phone sends them.
+  const cdp = await page.context().newCDPSession(page)
+  const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', p?: { x: number; y: number }) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: p ? [p] : [] })
+  await touch('touchStart', start)
+  for (let i = 1; i <= 10; i++) {
+    await touch('touchMove', {
+      x: start.x + ((end.x - start.x) * i) / 10,
+      y: start.y + ((end.y - start.y) * i) / 10,
+    })
+  }
+  await expect(page.getByTestId('column-applied')).toHaveClass(/ring-brand-500/)
+  await touch('touchEnd')
+
+  await expect(page.getByTestId('column-applied').getByTestId('pipeline-card')).toContainText(
+    'Corner flat',
+  )
+  await expect(page.getByTestId('column-new').getByTestId('pipeline-card')).toHaveCount(0)
+  // The drag must not also open the status sheet.
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await snap(page, 'pipeline-touch')
 })
