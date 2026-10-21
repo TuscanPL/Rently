@@ -104,6 +104,12 @@ Free Supabase projects pause after 7 days without activity. The daily refresh ca
 
 Adding a listing that matches another one in the hunt (same price ±2 %, area ±1 m², same district) shows "Looks like a duplicate of X" with **Delete this one**, **Keep both** and **Merge into X**. Merging keeps the older listing and fills its empty fields from the new one (its own values always win). It combines the features and moves photos, comments, price history and history events over. Each member keeps their vote on the older listing; a vote only on the new one moves over. The merged ad's link is remembered, so adding it again opens the kept listing.
 
+### Browsing an Otodom search
+
+List → **Browse Otodom** shows the results of a saved Otodom search inside the app. Set your filters on otodom.pl, copy the results page address and paste it in. Each result card has the photo, price, m², rooms, district and private/agency, and tapping it opens a preview with all its photos. **Add to hunt** imports the full ad like a pasted link; **Hide** removes the card for everyone in the hunt.
+
+Results are fetched **only when someone pulls down or taps Refresh**, never in the background. The `search-refresh` edge function reads up to 3 result pages per refresh, through the same per-site throttle as adding a listing (one Otodom request every 4 seconds), and skips the fetch if the search was refreshed less than a minute ago. Ads first seen in a later refresh are marked **New** for a day.
+
 ### Public transport trips
 
 Every listing shows how long it takes by public transport to each of the hunt's pins. Each pin has an **arrive by** day and time (default: Tuesday 9:00 Warsaw time; a family pin might be Saturday 12:00). The `transit-routes` edge function plans the trip for the next such day with [Transitous](https://transitous.org), a free, community-run journey planner built on the open timetables (ZTM, SKM, KM, WKD). No key or account is needed.

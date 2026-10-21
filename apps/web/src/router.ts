@@ -79,10 +79,22 @@ export const router = createRouter({
           ],
         },
         {
+          // Our listings and "Browse Otodom" share the List tab.
           path: 'list',
-          name: 'list',
-          component: () => import('@/views/ListView.vue'),
-          meta: { wide: true },
+          component: () => import('@/views/ListLayout.vue'),
+          children: [
+            {
+              path: '',
+              name: 'list',
+              component: () => import('@/views/ListView.vue'),
+              meta: { wide: true },
+            },
+            {
+              path: 'browse',
+              name: 'browse',
+              component: () => import('@/views/BrowseView.vue'),
+            },
+          ],
         },
         { path: 'add', name: 'add', component: () => import('@/views/AddListingView.vue') },
         {
