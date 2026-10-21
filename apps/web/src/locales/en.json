@@ -427,8 +427,7 @@
       "rejected": "Rejected",
       "gone": "Gone"
     },
-    "hint": "Drag cards between columns, or tap a card to change its status.",
-    "empty": "Nothing here yet",
+    "hint": "Drag a card up or down to another stage (hold the ⠿ handle on a phone), or tap it to change its status.",
     "noListings": "No listings yet. Add some, then track them here from first contact to keys.",
     "title": "Status",
     "change": "Change status",
@@ -443,7 +442,9 @@
     "downloadIcs": "Add to calendar (.ics)",
     "icsSummary": "Viewing: {title}",
     "icsDescription": "Open in ApartmentTogether: {url}",
-    "notePending": "Add your viewing note"
+    "notePending": "Add your viewing note",
+    "dropHere": "Drop here",
+    "dragHandle": "Drag to another stage"
   },
   "comments": {
     "title": "Comments",
