@@ -14,8 +14,11 @@ import { toNotification } from './lib/sw-message'
 
 declare const self: ServiceWorkerGlobalScope
 
-// registerType: 'autoUpdate': a new worker takes over right away.
-void self.skipWaiting()
+// registerType: 'prompt': a new worker waits until the app's "Update" button
+// asks it to take over (lib/appUpdate.ts), so nobody is reloaded mid-task.
+self.addEventListener('message', (event) => {
+  if ((event.data as { type?: string } | null)?.type === 'SKIP_WAITING') void self.skipWaiting()
+})
 clientsClaim()
 
 precacheAndRoute(self.__WB_MANIFEST)

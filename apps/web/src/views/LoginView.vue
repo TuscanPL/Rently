@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { APP_VERSION } from '@/lib/appUpdate'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -137,5 +138,8 @@ async function google() {
     </form>
 
     <p v-if="error" class="mt-4 text-sm text-rose-700" role="alert">{{ error }}</p>
+    <p class="mt-10 text-center text-xs text-slate-400" data-testid="login-version">
+      {{ t('appUpdate.version', { version: APP_VERSION }) }}
+    </p>
   </main>
 </template>

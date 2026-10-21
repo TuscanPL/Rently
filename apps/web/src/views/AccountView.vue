@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import NotificationSettings from '@/components/NotificationSettings.vue'
 import InstallPrompt from '@/components/InstallPrompt.vue'
+import AppVersion from '@/components/AppVersion.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -65,6 +66,7 @@ async function signOut() {
     </form>
     <NotificationSettings class="mt-8" />
     <InstallPrompt class="mt-8" />
+    <AppVersion class="mt-8" />
     <button type="button" class="btn-secondary mt-8 w-full" @click="signOut">
       {{ t('auth.signOut') }}
     </button>

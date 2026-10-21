@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc -b",
     "test": "vitest run --passWithNoTests --dir src",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:update": "playwright test -c playwright.update.config.ts"
   },
   "dependencies": {
     "@at/parsers": "workspace:*",

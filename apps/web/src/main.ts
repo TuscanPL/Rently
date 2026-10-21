@@ -4,9 +4,11 @@ import App from './App.vue'
 import { router } from './router'
 import { i18n } from './i18n'
 import { listenForInstall } from './lib/install'
+import { startUpdateChecks } from './lib/appUpdate'
 import './style.css'
 
 listenForInstall()
+startUpdateChecks()
 
 // A tapped push notification routes an already open window (see sw.ts).
 navigator.serviceWorker?.addEventListener('message', (event) => {
