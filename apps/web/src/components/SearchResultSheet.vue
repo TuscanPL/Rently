@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatArea, formatPLN, type ParsedListing } from '@at/shared'
-import { resultTotal, type SearchResult } from '@/lib/browse'
-import { supabase } from '@/lib/supabase'
+import { resultPhotos, resultTotal, type SearchResult } from '@/lib/browse'
+import { loadResultDetail } from '@/lib/browseApi'
 
 // A closer look at an ad from the results without leaving the app. It opens
 // with what the results list had and loads the full ad (description, all
@@ -21,9 +21,7 @@ const loadError = ref<string | null>(null)
 const showFull = ref(false)
 
 const detail = computed(() => props.result.detail as ParsedListing | null)
-const photos = computed(() =>
-  detail.value?.photos?.length ? detail.value.photos : props.result.photos,
-)
+const photos = computed(() => resultPhotos(props.result))
 const rent = computed(() => detail.value?.rent ?? props.result.rent)
 const adminFee = computed(() => detail.value?.adminFee ?? props.result.admin_fee)
 const description = computed(() => {
@@ -56,18 +54,13 @@ const extras = computed(() => {
 onMounted(async () => {
   if (detail.value) return
   loading.value = true
-  const { data, error } = await supabase.functions.invoke<{ detail: ParsedListing }>(
-    'search-refresh',
-    { body: { searchId: props.result.search_id, externalId: props.result.external_id } },
-  )
-  loading.value = false
-  if (error || !data) {
-    const ctx = (error as { context?: Response } | null)?.context
-    const body = ctx && (await ctx.json().catch(() => null))
-    loadError.value = body?.error ?? error?.message ?? null
-    return
+  try {
+    emit('detail', await loadResultDetail(props.result))
+  } catch (e) {
+    loadError.value = (e as Error).message
+  } finally {
+    loading.value = false
   }
-  emit('detail', data.detail)
 })
 </script>
 

@@ -225,7 +225,16 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   await expect(page.getByTestId('search-status')).toContainText('42 on Otodom, showing 2')
   await snap(page, 'browse-results')
 
-  // A closer look without leaving the app: the full ad loads in, then add it to the hunt.
+  // Swiping a card's photos to the last one brings in the rest from the full ad.
+  const strip = cards.first().getByTestId('result-photos')
+  await expect(strip.locator('img')).toHaveCount(2)
+  await expect(cards.first().getByTestId('photo-counter')).toHaveText('1 / 2')
+  await strip.evaluate((el) => el.scrollTo({ left: el.scrollWidth }))
+  await expect(strip.locator('img')).toHaveCount(3)
+  await expect(cards.first().getByTestId('photo-counter')).toHaveText('2 / 3')
+  expect(calls.detail).toBe(1)
+
+  // A closer look without leaving the app: the full ad is already there, then add it.
   await cards.first().getByRole('button').first().click()
   const sheet = page.getByTestId('search-sheet')
   await expect(sheet).toContainText('ul. Bokserska 12, Warszawa · Mokotów')
@@ -244,11 +253,16 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   await expect(sheet.getByRole('button', { name: 'In hunt' })).toBeDisabled({ timeout: 30_000 })
   // "Add as liked" is this member's yes.
   const huntId = page.url().split('/h/')[1]!.split('/')[0]!
-  const { data: liked } = await admin
-    .from('votes')
-    .select('swipe, listings!inner(hunt_id)')
-    .eq('listings.hunt_id', huntId)
-  expect(liked?.map((v) => v.swipe)).toEqual(['yes'])
+  // (The listing can show up over Realtime a moment before the vote is written.)
+  await expect
+    .poll(async () => {
+      const { data } = await admin
+        .from('votes')
+        .select('swipe, listings!inner(hunt_id)')
+        .eq('listings.hunt_id', huntId)
+      return data?.map((v) => v.swipe)
+    })
+    .toEqual(['yes'])
   await sheet.getByRole('button', { name: 'Close' }).click()
   await expect(cards.first()).toContainText('✓ In hunt')
   // Opening it again uses the stored ad.

@@ -1,17 +1,32 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatArea, formatPLN } from '@at/shared'
-import { resultTotal, type SearchResult } from '@/lib/browse'
+import { resultDetail, resultPhotos, resultTotal, type SearchResult } from '@/lib/browse'
 
-// One ad from a saved Otodom search: just what the results list shows.
-defineProps<{
+// One ad from a saved Otodom search. Its photos swipe sideways; the results
+// list only has a few, so reaching the last one asks for the full ad (once),
+// which brings the rest.
+const props = defineProps<{
   result: SearchResult
   isNew: boolean
   inHunt: boolean
   adding: boolean
+  /** The full ad is being read for its photos. */
+  loadingPhotos?: boolean
 }>()
-defineEmits<{ open: []; add: []; hide: []; unhide: [] }>()
+const emit = defineEmits<{ open: []; add: []; hide: []; unhide: []; morePhotos: [] }>()
 const { t } = useI18n()
+
+const photos = computed(() => resultPhotos(props.result))
+const index = ref(0)
+const broken = ref(new Set<string>())
+
+function onScroll(e: Event) {
+  const el = e.target as HTMLElement
+  index.value = Math.round(el.scrollLeft / Math.max(el.clientWidth, 1))
+  if (index.value >= photos.value.length - 1 && !resultDetail(props.result)) emit('morePhotos')
+}
 </script>
 
 <template>
@@ -20,23 +35,50 @@ const { t } = useI18n()
     :class="{ 'opacity-60': result.hidden_at }"
     data-testid="search-result"
   >
-    <button type="button" class="flex w-full gap-3 text-left" @click="$emit('open')">
-      <div class="relative h-28 w-32 shrink-0 bg-slate-100">
-        <img
-          v-if="result.photos[0]"
-          :src="result.photos[0]"
-          alt=""
-          referrerpolicy="no-referrer"
-          loading="lazy"
-          class="h-full w-full object-cover"
-        />
-        <span
-          v-if="isNew"
-          class="absolute top-1.5 left-1.5 rounded-full bg-brand-700 px-2 py-0.5 text-xs font-semibold text-white"
-          >{{ t('browse.new') }}</span
+    <div class="relative bg-slate-100">
+      <div
+        class="flex aspect-[4/3] snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none]"
+        data-testid="result-photos"
+        @scroll.passive="onScroll"
+      >
+        <template v-for="src in photos" :key="src">
+          <img
+            v-if="!broken.has(src)"
+            :src="src"
+            alt=""
+            referrerpolicy="no-referrer"
+            loading="lazy"
+            class="h-full w-full shrink-0 snap-center object-cover"
+            @click="$emit('open')"
+            @error="broken = new Set([...broken, src])"
+          />
+        </template>
+        <button
+          v-if="!photos.length"
+          type="button"
+          class="flex w-full items-center justify-center text-5xl text-slate-300"
+          :aria-label="result.title ?? t('listing.untitled')"
+          @click="$emit('open')"
         >
+          🏠
+        </button>
       </div>
-      <div class="min-w-0 flex-1 py-2 pr-3">
+      <span
+        v-if="isNew"
+        class="absolute top-2 left-2 rounded-full bg-brand-700 px-2 py-0.5 text-xs font-semibold text-white"
+        >{{ t('browse.new') }}</span
+      >
+      <span
+        v-if="photos.length > 1 || loadingPhotos"
+        class="absolute right-2 bottom-2 rounded-full bg-slate-900/60 px-2 py-0.5 text-xs font-semibold text-white"
+        data-testid="photo-counter"
+      >
+        {{ Math.min(index + 1, photos.length) }} / {{ photos.length
+        }}<template v-if="loadingPhotos">…</template>
+      </span>
+    </div>
+    <button type="button" class="block w-full text-left" @click="$emit('open')">
+      <div class="min-w-0 px-3 py-2">
         <p class="line-clamp-2 text-sm leading-snug font-semibold">
           {{ result.title ?? t('listing.untitled') }}
         </p>

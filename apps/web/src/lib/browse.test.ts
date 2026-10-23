@@ -7,6 +7,7 @@ import {
   sortResults,
   type SavedSearch,
   type SearchResult,
+  resultPhotos,
 } from './browse'
 
 const search = {
@@ -58,5 +59,17 @@ describe('browse helpers', () => {
       result({ external_id: 'c', posted_at: '2026-10-20T08:00:00Z' }),
     ])
     expect(sorted.map((r) => r.external_id)).toEqual(['b', 'c', 'a'])
+  })
+})
+
+describe('resultPhotos', () => {
+  it("uses the full ad's photos once it's loaded", () => {
+    expect(resultPhotos({ photos: ['a'], detail: null })).toEqual(['a'])
+    expect(resultPhotos({ photos: ['a'], detail: { photos: ['a', 'b', 'c'] } })).toEqual([
+      'a',
+      'b',
+      'c',
+    ])
+    expect(resultPhotos({ photos: ['a'], detail: { title: 'no photos' } })).toEqual(['a'])
   })
 })
