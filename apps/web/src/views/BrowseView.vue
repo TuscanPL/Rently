@@ -461,14 +461,17 @@ onBeforeUnmount(() => {
       {{ t('common.error', { message: error }) }}
     </p>
 
-    <SearchResultSheet
-      v-if="open"
-      :result="open"
-      :in-hunt="inHunt(open, urls)"
-      :adding="adding.has(open.external_id)"
-      @close="open = null"
-      @add="(liked) => add(open!, liked)"
-      @detail="(detail) => setDetail(open!, detail)"
-    />
+    <!-- On <body>, outside the list: its touches mustn't reach pull-to-refresh. -->
+    <Teleport to="body">
+      <SearchResultSheet
+        v-if="open"
+        :result="open"
+        :in-hunt="inHunt(open, urls)"
+        :adding="adding.has(open.external_id)"
+        @close="open = null"
+        @add="(liked) => add(open!, liked)"
+        @detail="(detail) => setDetail(open!, detail)"
+      />
+    </Teleport>
   </div>
 </template>

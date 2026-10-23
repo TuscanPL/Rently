@@ -265,11 +265,26 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
     .toEqual(['yes'])
   await sheet.getByRole('button', { name: 'Close' }).click()
   await expect(cards.first()).toContainText('✓ In hunt')
-  // Opening it again uses the stored ad.
+  // Opening it again uses the stored ad. The page behind stays put while the
+  // sheet is open, whatever is scrolled over it, and is where it was after.
+  await page.setViewportSize({ width: 390, height: 500 })
   await cards.first().getByRole('button').first().click()
   await expect(sheet.getByTestId('detail-description')).toBeVisible()
   expect(calls.detail).toBe(1)
+  await expect.poll(() => page.evaluate(() => document.body.style.position)).toBe('fixed')
+  const pinnedTop = await page.evaluate(() => document.body.style.top)
+  // The page was scrolled (the tapped card is lower down) and is held there.
+  const before = -parseInt(pinnedTop)
+  expect(before).toBeGreaterThan(0)
+  await sheet.hover()
+  await page.mouse.wheel(0, 2000)
+  await page.mouse.wheel(0, -2000)
+  await page.mouse.wheel(0, 2000)
+  expect(await page.evaluate(() => document.body.style.top)).toBe(pinnedTop)
   await sheet.getByRole('button', { name: 'Close' }).click()
+  await expect.poll(() => page.evaluate(() => document.body.style.position)).toBe('')
+  expect(await page.evaluate(() => window.scrollY)).toBe(before)
+  await page.setViewportSize({ width: 390, height: 844 })
   // The listing is saved from the full ad, without fetching it again.
   await page.getByRole('link', { name: 'Our listings' }).click()
   await expect(page.getByTestId('listing-card')).toHaveCount(1)

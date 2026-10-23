@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { formatArea, formatPLN, type ParsedListing } from '@at/shared'
 import { resultPhotos, resultTotal, type SearchResult } from '@/lib/browse'
 import { loadResultDetail } from '@/lib/browseApi'
+import { useScrollLock } from '@/lib/useScrollLock'
 
 // A closer look at an ad from the results without leaving the app. It opens
 // with what the results list had and loads the full ad (description, all
@@ -19,6 +20,7 @@ const broken = ref(new Set<number>())
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const showFull = ref(false)
+useScrollLock()
 
 const detail = computed(() => props.result.detail as ParsedListing | null)
 const photos = computed(() => resultPhotos(props.result))
@@ -66,17 +68,19 @@ onMounted(async () => {
 
 <template>
   <div
-    class="fixed inset-0 z-[1500] flex items-end bg-slate-900/50 md:items-center md:justify-center"
+    class="fixed inset-0 z-[1500] flex touch-none items-end overscroll-none bg-slate-900/50 md:items-center md:justify-center"
     @click.self="$emit('close')"
   >
     <div
-      class="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] md:max-w-lg md:rounded-3xl"
+      class="max-h-[92dvh] w-full touch-auto overflow-y-auto overscroll-contain rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] md:max-w-lg md:rounded-3xl"
       role="dialog"
       aria-modal="true"
       :aria-label="result.title ?? t('listing.untitled')"
       data-testid="search-sheet"
     >
-      <div class="flex snap-x snap-mandatory gap-1 overflow-x-auto bg-slate-100">
+      <div
+        class="flex snap-x snap-mandatory gap-1 overflow-x-auto overscroll-x-contain bg-slate-100"
+      >
         <template v-for="(src, i) in photos" :key="src">
           <img
             v-if="!broken.has(i)"
