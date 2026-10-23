@@ -111,7 +111,7 @@ List → **Browse Otodom** shows the results of a saved Otodom search inside the
 - **Set filters**: pick the city and district, max rent, rooms and minimum m², and whether to show private owners only. **Use our hunt criteria** fills these from the hunt's settings. The app writes the Otodom results link for you, and **Check this search on Otodom ↗** opens it so you can see it's the right search.
 - **Paste a link**: set your filters on otodom.pl, copy the results page address and paste it in.
 
-Each result card has the photo, price, m², rooms, district and private/agency. Tapping it opens the full ad inside the app: description, all photos, deposit, floor, features. The full ad is read from Otodom the first time anyone opens that card, then kept in `search_results.detail`, so opening it again doesn't fetch. **Add to hunt** saves the listing from that stored ad without fetching again, and counts as your yes, so it lands in your partner's deck. **Hide** removes the card for everyone in the hunt. The cards are stored in `search_results`, so everyone in the hunt sees the same list.
+Each result card has the price, m², rooms, district and private/agency, and its photos swipe sideways. The results list only carries a few photos per ad; swiping to the last one reads the full ad (once, like opening it) and the rest appear. Tapping it opens the full ad inside the app: description, all photos, deposit, floor, features. The full ad is read from Otodom the first time anyone opens that card, then kept in `search_results.detail`, so opening it again doesn't fetch. **Add to hunt** saves the listing from that stored ad without fetching again and puts it in everyone's deck; **Add as liked** does the same and records your yes, so only your partner gets it in their deck. **Hide** removes the card for everyone in the hunt. The cards are stored in `search_results`, so everyone in the hunt sees the same list.
 
 Results are fetched **only when someone asks**, never in the background:
 
@@ -198,7 +198,7 @@ The build-time defaults are `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `V
 
 1. **Foundation** ✅: monorepo, schema + RLS + seed, auth (magic link + Google), hunts, invite links, deploy workflows
 2. **Ingest v1** ✅: paste link → `ingest-listing` → Otodom / OLX / generic parsers, listing detail + edit, add from text + photos
-3. **Deciding** ✅: swipe deck, matches, disagreements, reconsider, realtime toasts (adding a listing counts as your yes; star ratings were removed)
+3. **Deciding** ✅: swipe deck, matches, disagreements, reconsider, realtime toasts (star ratings were removed)
 4. **Organize** ✅: list sort / filter, criteria badges, pipeline kanban, comments, viewing notes, .ics
 5. **Map & pins** ✅: geocoding, pins, map, distance to pins, compare
 6. **Mobile capture** ✅: PWA install, share target, Web Push, in-app notification feed

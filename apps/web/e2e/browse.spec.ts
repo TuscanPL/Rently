@@ -225,7 +225,16 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
   await expect(page.getByTestId('search-status')).toContainText('42 on Otodom, showing 2')
   await snap(page, 'browse-results')
 
-  // A closer look without leaving the app: the full ad loads in, then add it to the hunt.
+  // Swiping a card's photos to the last one brings in the rest from the full ad.
+  const strip = cards.first().getByTestId('result-photos')
+  await expect(strip.locator('img')).toHaveCount(2)
+  await expect(cards.first().getByTestId('photo-counter')).toHaveText('1 / 2')
+  await strip.evaluate((el) => el.scrollTo({ left: el.scrollWidth }))
+  await expect(strip.locator('img')).toHaveCount(3)
+  await expect(cards.first().getByTestId('photo-counter')).toHaveText('2 / 3')
+  expect(calls.detail).toBe(1)
+
+  // A closer look without leaving the app: the full ad is already there, then add it.
   await cards.first().getByRole('button').first().click()
   const sheet = page.getByTestId('search-sheet')
   await expect(sheet).toContainText('ul. Bokserska 12, Warszawa · Mokotów')
@@ -239,15 +248,43 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
     ADS[0]!.url,
   )
   await snap(page, 'browse-sheet')
-  await sheet.getByRole('button', { name: 'Add to hunt' }).click()
+  await expect(sheet.getByRole('button', { name: 'Add to hunt' })).toBeVisible()
+  await sheet.getByRole('button', { name: '♥ Add as liked' }).click()
   await expect(sheet.getByRole('button', { name: 'In hunt' })).toBeDisabled({ timeout: 30_000 })
+  // "Add as liked" is this member's yes.
+  const huntId = page.url().split('/h/')[1]!.split('/')[0]!
+  // (The listing can show up over Realtime a moment before the vote is written.)
+  await expect
+    .poll(async () => {
+      const { data } = await admin
+        .from('votes')
+        .select('swipe, listings!inner(hunt_id)')
+        .eq('listings.hunt_id', huntId)
+      return data?.map((v) => v.swipe)
+    })
+    .toEqual(['yes'])
   await sheet.getByRole('button', { name: 'Close' }).click()
   await expect(cards.first()).toContainText('✓ In hunt')
-  // Opening it again uses the stored ad.
+  // Opening it again uses the stored ad. The page behind stays put while the
+  // sheet is open, whatever is scrolled over it, and is where it was after.
+  await page.setViewportSize({ width: 390, height: 500 })
   await cards.first().getByRole('button').first().click()
   await expect(sheet.getByTestId('detail-description')).toBeVisible()
   expect(calls.detail).toBe(1)
+  await expect.poll(() => page.evaluate(() => document.body.style.position)).toBe('fixed')
+  const pinnedTop = await page.evaluate(() => document.body.style.top)
+  // The page was scrolled (the tapped card is lower down) and is held there.
+  const before = -parseInt(pinnedTop)
+  expect(before).toBeGreaterThan(0)
+  await sheet.hover()
+  await page.mouse.wheel(0, 2000)
+  await page.mouse.wheel(0, -2000)
+  await page.mouse.wheel(0, 2000)
+  expect(await page.evaluate(() => document.body.style.top)).toBe(pinnedTop)
   await sheet.getByRole('button', { name: 'Close' }).click()
+  await expect.poll(() => page.evaluate(() => document.body.style.position)).toBe('')
+  expect(await page.evaluate(() => window.scrollY)).toBe(before)
+  await page.setViewportSize({ width: 390, height: 844 })
   // The listing is saved from the full ad, without fetching it again.
   await page.getByRole('link', { name: 'Our listings' }).click()
   await expect(page.getByTestId('listing-card')).toHaveCount(1)

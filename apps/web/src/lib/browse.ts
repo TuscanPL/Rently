@@ -1,5 +1,5 @@
 import { canonicalizeUrl } from '@at/parsers'
-import { totalMonthly } from '@at/shared'
+import { totalMonthly, type ParsedListing } from '@at/shared'
 import type { Tables } from './supabase'
 
 export type SavedSearch = Tables<'saved_searches'>
@@ -18,6 +18,17 @@ export function isNew(result: SearchResult, search: SavedSearch, now = Date.now(
   if (!search.first_refreshed_at) return false
   const first = Date.parse(result.first_seen_at)
   return first > Date.parse(search.first_refreshed_at) + 1000 && now - first < NEW_FOR_MS
+}
+
+/** The full ad once someone has opened it, else null. */
+export function resultDetail(r: Pick<SearchResult, 'detail'>): ParsedListing | null {
+  return (r.detail as ParsedListing | null) ?? null
+}
+
+/** Every photo of the ad once its full ad is loaded; until then the few the results list has. */
+export function resultPhotos(r: Pick<SearchResult, 'detail' | 'photos'>): string[] {
+  const full = resultDetail(r)?.photos
+  return full?.length ? full : r.photos
 }
 
 export function resultTotal(r: Pick<SearchResult, 'rent' | 'admin_fee'>) {

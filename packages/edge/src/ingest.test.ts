@@ -140,14 +140,13 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
       .select('type')
       .eq('listing_id', body.listingId)
       .order('created_at')
-    // Adding it is the adder's yes; alone in the hunt, that's a match.
-    expect(events).toEqual([{ type: 'added' }, { type: 'voted' }, { type: 'matched' }])
-    const { data: vote } = await user
+    // A plain add doesn't vote: the listing waits in everyone's deck.
+    expect(events).toEqual([{ type: 'added' }])
+    const { count } = await user
       .from('votes')
-      .select('swipe')
+      .select('*', { count: 'exact', head: true })
       .eq('listing_id', body.listingId)
-      .single()
-    expect(vote).toEqual({ swipe: 'yes' })
+    expect(count).toBe(0)
     const { data: history } = await user
       .from('listing_price_history')
       .select('rent')
@@ -163,23 +162,21 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
     expect(body.existing).toBe(true)
   })
 
-  it("adding a listing again doesn't change an earlier vote", async () => {
+  it('"Add as liked" records a yes, also for a listing that is already in the hunt', async () => {
     const { data: listing } = await user
       .from('listings')
       .select('id')
       .eq('canonical_url', 'https://otodom.pl/oferta/3-pokoje-64-m-mokotow-blisko-skm-ID4tAbC')
       .single()
-    await user.from('votes').update({ swipe: 'no' }).eq('listing_id', listing!.id)
-    const { body } = await call({ huntId, url: OTODOM_URL })
+    await user.from('votes').insert({ listing_id: listing!.id, swipe: 'no' })
+    const { body } = await call({ huntId, url: OTODOM_URL, liked: true })
     expect(body).toMatchObject({ existing: true, listingId: listing!.id })
     const { data: vote } = await user
       .from('votes')
       .select('swipe')
       .eq('listing_id', listing!.id)
       .single()
-    expect(vote).toEqual({ swipe: 'no' })
-    // Rejected listings aren't offered as duplicates; later tests rely on this one.
-    await user.from('votes').update({ swipe: 'yes' }).eq('listing_id', listing!.id)
+    expect(vote).toEqual({ swipe: 'yes' })
   })
 
   it('saves an ad Browse already read without fetching it again', async () => {
@@ -189,6 +186,7 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
       huntId,
       url,
       via: 'browse',
+      liked: true,
       parsed: {
         source: 'otodom',
         url,
@@ -208,6 +206,12 @@ describe.skipIf(!stackUp)('ingest-listing', () => {
       .eq('type', 'added')
       .single()
     expect(event!.payload).toMatchObject({ method: 'browse' })
+    const { data: vote } = await user
+      .from('votes')
+      .select('swipe')
+      .eq('listing_id', body.listingId)
+      .single()
+    expect(vote).toEqual({ swipe: 'yes' })
   })
 
   it('saves a partial listing when the site blocks fetching', async () => {

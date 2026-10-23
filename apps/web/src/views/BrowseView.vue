@@ -7,6 +7,7 @@ import type { OtodomSearchParams } from '@at/parsers'
 import type { HuntCriteria, ParsedListing } from '@at/shared'
 import { supabase } from '@/lib/supabase'
 import { ingest } from '@/lib/listings'
+import { loadResultDetail } from '@/lib/browseApi'
 import {
   huntUrls,
   inHunt,
@@ -136,6 +137,8 @@ async function invokeRefresh(body: { searchId: string; page?: number }) {
 async function refresh() {
   if (!search.value) return
   const firstLoad = !search.value.last_refreshed_at
+  // Page 1 starts over: only scrolling after this loads the next page.
+  scrolled = false
   error.value = null
   notice.value = null
   const data = await invokeRefresh({ searchId: search.value.id })
@@ -165,15 +168,15 @@ async function loadMore() {
 const listEl = useTemplateRef<HTMLElement>('listEl')
 const { pull, refreshing, run, threshold } = usePullToRefresh(listEl, refresh)
 
-async function add(result: SearchResult) {
+async function add(result: SearchResult, liked = false) {
   adding.value = new Set([...adding.value, result.external_id])
   error.value = null
   try {
     // The full ad read when the card was opened saves fetching it again.
     await ingest(
       result.detail
-        ? { huntId: huntId.value, url: result.url, parsed: result.detail, via: 'browse' }
-        : { huntId: huntId.value, url: result.url },
+        ? { huntId: huntId.value, url: result.url, parsed: result.detail, via: 'browse', liked }
+        : { huntId: huntId.value, url: result.url, liked },
     )
     await listingsStore.fetchAll()
   } catch (e) {
@@ -182,6 +185,25 @@ async function add(result: SearchResult) {
     const next = new Set(adding.value)
     next.delete(result.external_id)
     adding.value = next
+  }
+}
+
+// Results whose full ad is being read for its photos (one request each, ever).
+const loadingPhotos = ref(new Set<string>())
+const triedPhotos = new Set<string>()
+
+async function morePhotos(result: SearchResult) {
+  if (result.detail || triedPhotos.has(result.external_id)) return
+  triedPhotos.add(result.external_id)
+  loadingPhotos.value = new Set([...loadingPhotos.value, result.external_id])
+  try {
+    setDetail(result, await loadResultDetail(result))
+  } catch {
+    // The card keeps the photos it has; opening it shows why the full ad didn't load.
+  } finally {
+    const next = new Set(loadingPhotos.value)
+    next.delete(result.external_id)
+    loadingPhotos.value = next
   }
 }
 
@@ -271,7 +293,8 @@ watch(selectedId, (id, old) => {
   if (old !== undefined && id !== old) void loadResults()
 })
 // Reaching the end of the list loads the next page, once the user has actually
-// scrolled: a short list whose end is already on screen doesn't fetch by itself.
+// scrolled since the last refresh: a short list whose end is already on screen
+// (or a scroll that happened while setting up the search) doesn't fetch by itself.
 const endEl = useTemplateRef<HTMLElement>('endEl')
 let observer: IntersectionObserver | undefined
 let scrolled = false
@@ -397,7 +420,9 @@ onBeforeUnmount(() => {
           :is-new="isNew(r, search)"
           :in-hunt="inHunt(r, urls)"
           :adding="adding.has(r.external_id)"
+          :loading-photos="loadingPhotos.has(r.external_id)"
           @open="open = r"
+          @more-photos="morePhotos(r)"
           @add="add(r)"
           @hide="setHidden(r, true)"
           @unhide="setHidden(r, false)"
@@ -436,14 +461,17 @@ onBeforeUnmount(() => {
       {{ t('common.error', { message: error }) }}
     </p>
 
-    <SearchResultSheet
-      v-if="open"
-      :result="open"
-      :in-hunt="inHunt(open, urls)"
-      :adding="adding.has(open.external_id)"
-      @close="open = null"
-      @add="add(open!)"
-      @detail="(detail) => setDetail(open!, detail)"
-    />
+    <!-- On <body>, outside the list: its touches mustn't reach pull-to-refresh. -->
+    <Teleport to="body">
+      <SearchResultSheet
+        v-if="open"
+        :result="open"
+        :in-hunt="inHunt(open, urls)"
+        :adding="adding.has(open.external_id)"
+        @close="open = null"
+        @add="(liked) => add(open!, liked)"
+        @detail="(detail) => setDetail(open!, detail)"
+      />
+    </Teleport>
   </div>
 </template>

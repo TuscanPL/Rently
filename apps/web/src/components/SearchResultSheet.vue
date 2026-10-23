@@ -2,24 +2,28 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatArea, formatPLN, type ParsedListing } from '@at/shared'
-import { resultTotal, type SearchResult } from '@/lib/browse'
-import { supabase } from '@/lib/supabase'
+import { resultPhotos, resultTotal, type SearchResult } from '@/lib/browse'
+import { loadResultDetail } from '@/lib/browseApi'
+import { useScrollLock } from '@/lib/useScrollLock'
 
 // A closer look at an ad from the results without leaving the app. It opens
 // with what the results list had and loads the full ad (description, all
 // photos, deposit, features) from Otodom the first time anyone opens it.
 const props = defineProps<{ result: SearchResult; inHunt: boolean; adding: boolean }>()
-const emit = defineEmits<{ close: []; add: []; detail: [detail: ParsedListing] }>()
+const emit = defineEmits<{
+  close: []
+  add: [liked: boolean]
+  detail: [detail: ParsedListing]
+}>()
 const { t, d } = useI18n()
 const broken = ref(new Set<number>())
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const showFull = ref(false)
+useScrollLock()
 
 const detail = computed(() => props.result.detail as ParsedListing | null)
-const photos = computed(() =>
-  detail.value?.photos?.length ? detail.value.photos : props.result.photos,
-)
+const photos = computed(() => resultPhotos(props.result))
 const rent = computed(() => detail.value?.rent ?? props.result.rent)
 const adminFee = computed(() => detail.value?.adminFee ?? props.result.admin_fee)
 const description = computed(() => {
@@ -52,34 +56,31 @@ const extras = computed(() => {
 onMounted(async () => {
   if (detail.value) return
   loading.value = true
-  const { data, error } = await supabase.functions.invoke<{ detail: ParsedListing }>(
-    'search-refresh',
-    { body: { searchId: props.result.search_id, externalId: props.result.external_id } },
-  )
-  loading.value = false
-  if (error || !data) {
-    const ctx = (error as { context?: Response } | null)?.context
-    const body = ctx && (await ctx.json().catch(() => null))
-    loadError.value = body?.error ?? error?.message ?? null
-    return
+  try {
+    emit('detail', await loadResultDetail(props.result))
+  } catch (e) {
+    loadError.value = (e as Error).message
+  } finally {
+    loading.value = false
   }
-  emit('detail', data.detail)
 })
 </script>
 
 <template>
   <div
-    class="fixed inset-0 z-[1500] flex items-end bg-slate-900/50 md:items-center md:justify-center"
+    class="fixed inset-0 z-[1500] flex touch-none items-end overscroll-none bg-slate-900/50 md:items-center md:justify-center"
     @click.self="$emit('close')"
   >
     <div
-      class="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] md:max-w-lg md:rounded-3xl"
+      class="max-h-[92dvh] w-full touch-auto overflow-y-auto overscroll-contain rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] md:max-w-lg md:rounded-3xl"
       role="dialog"
       aria-modal="true"
       :aria-label="result.title ?? t('listing.untitled')"
       data-testid="search-sheet"
     >
-      <div class="flex snap-x snap-mandatory gap-1 overflow-x-auto bg-slate-100">
+      <div
+        class="flex snap-x snap-mandatory gap-1 overflow-x-auto overscroll-x-contain bg-slate-100"
+      >
         <template v-for="(src, i) in photos" :key="src">
           <img
             v-if="!broken.has(i)"
@@ -167,23 +168,28 @@ onMounted(async () => {
         </div>
         <p class="text-xs text-slate-500">{{ t('browse.sheetHelp') }}</p>
         <div class="flex gap-3">
-          <a
-            :href="result.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn-secondary flex-1"
-          >
-            {{ t('browse.openOtodom') }} ↗
-          </a>
-          <button
-            type="button"
-            class="btn-primary flex-1"
-            :disabled="inHunt || adding"
-            @click="$emit('add')"
-          >
-            {{ inHunt ? t('browse.added') : adding ? t('browse.adding') : t('browse.add') }}
-          </button>
+          <template v-if="inHunt || adding">
+            <button type="button" class="btn-primary flex-1" disabled>
+              {{ inHunt ? t('browse.added') : t('browse.adding') }}
+            </button>
+          </template>
+          <template v-else>
+            <button type="button" class="btn-secondary flex-1" @click="$emit('add', false)">
+              {{ t('browse.add') }}
+            </button>
+            <button type="button" class="btn-primary flex-1" @click="$emit('add', true)">
+              ♥ {{ t('browse.addLiked') }}
+            </button>
+          </template>
         </div>
+        <a
+          :href="result.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block text-center text-sm font-semibold text-brand-700"
+        >
+          {{ t('browse.openOtodom') }} ↗
+        </a>
       </div>
     </div>
   </div>

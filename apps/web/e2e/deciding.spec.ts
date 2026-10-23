@@ -43,25 +43,24 @@ async function addListing(page: Page, title: string, rent: number, total: string
 const swipe = (page: Page, name: 'Yes' | 'No' | 'Maybe') =>
   page.getByTestId('deck-controls').getByRole('button', { name, exact: true }).click()
 
-test('adding a listing is your yes; the partner swipes and both see the match', async ({
-  browser,
-}) => {
+test('both members swipe yes and both see the match', async ({ browser }) => {
   const { a, b } = await huntWithPartner(browser)
   await addListing(a, 'Sunny flat near SKM', 4200, '4 950 zł')
-  // A added it, so A already said yes: nothing in A's deck.
+
+  await expect(a.getByTestId('deck-card')).toContainText('Sunny flat near SKM')
+  await expect(a.getByTestId('deck-card')).toContainText('4 950 zł')
+  await expect(a.getByTestId('deck-card').getByRole('button', { name: /star/ })).toHaveCount(0)
+  await swipe(a, 'Yes')
+  await expect(a.getByTestId('deck-empty')).toBeVisible()
+
+  // Undo brings the card back; swipe again.
+  await a.getByRole('button', { name: 'Undo last swipe' }).click()
+  await expect(a.getByTestId('deck-card')).toContainText('Sunny flat near SKM')
+  await swipe(a, 'Yes')
   await expect(a.getByTestId('deck-empty')).toBeVisible()
 
   // The new listing reaches B's deck over Realtime.
-  const card = b.getByTestId('deck-card')
-  await expect(card).toContainText('Sunny flat near SKM')
-  await expect(card).toContainText('4 950 zł')
-  await expect(card.getByRole('button', { name: /star/ })).toHaveCount(0)
-  await swipe(b, 'No')
-  await expect(b.getByTestId('deck-empty')).toBeVisible()
-
-  // Undo brings the card back; swipe again.
-  await b.getByRole('button', { name: 'Undo last swipe' }).click()
-  await expect(card).toContainText('Sunny flat near SKM')
+  await expect(b.getByTestId('deck-card')).toContainText('Sunny flat near SKM')
   await swipe(b, 'Yes')
 
   // B's yes completes the match: A gets the toast from Realtime.
@@ -80,7 +79,7 @@ test('adding a listing is your yes; the partner swipes and both see the match', 
 test('a rejected listing comes back to the top of the deck after Reconsider', async ({
   browser,
 }) => {
-  const { a, b, aName } = await huntWithPartner(browser)
+  const { a, b, aName, bName } = await huntWithPartner(browser)
   await addListing(a, 'Flat with a small kitchen', 3800, '4 550 zł')
   await addListing(a, 'Flat by the park', 4600, '5 350 zł')
 
@@ -91,14 +90,18 @@ test('a rejected listing comes back to the top of the deck after Reconsider', as
   await swipe(b, 'No')
   await expect(b.getByTestId('deck-empty')).toBeVisible()
 
-  // A added it (a yes), B said no: A asks B to take another look.
-  await a.getByRole('link', { name: /^Disagreements/ }).click()
-  const list = a.getByTestId('disagreements-list')
-  await expect(list).toContainText('Flat with a small kitchen')
-  await list.getByRole('button', { name: 'Reconsider' }).click()
+  // A sees the rejected listing after the unrejected one, with the banner.
+  await expect(a.getByTestId('deck-card')).toContainText('Flat by the park')
+  await swipe(a, 'Yes')
+  const card = a.getByTestId('deck-card')
+  await expect(card).toContainText('Flat with a small kitchen')
+  await expect(card.getByTestId('rejected-banner')).toContainText(`✗ Rejected by ${bName}`)
+
+  await card.getByRole('button', { name: 'Reconsider' }).click()
   await a.getByLabel('Note (optional)').fill('price dropped')
   await a.getByRole('dialog').getByRole('button', { name: 'Reconsider' }).click()
-  await expect(list).toContainText('Reconsider requested')
+  await expect(card.getByTestId('rejected-banner')).toContainText('Reconsider requested')
+  await swipe(a, 'Yes')
 
   // Back at the top of B's deck, with who asked and the note.
   const pinned = b.getByTestId('deck-card')
