@@ -9,7 +9,11 @@ import { supabase } from '@/lib/supabase'
 // with what the results list had and loads the full ad (description, all
 // photos, deposit, features) from Otodom the first time anyone opens it.
 const props = defineProps<{ result: SearchResult; inHunt: boolean; adding: boolean }>()
-const emit = defineEmits<{ close: []; add: []; detail: [detail: ParsedListing] }>()
+const emit = defineEmits<{
+  close: []
+  add: [liked: boolean]
+  detail: [detail: ParsedListing]
+}>()
 const { t, d } = useI18n()
 const broken = ref(new Set<number>())
 const loading = ref(false)
@@ -167,23 +171,28 @@ onMounted(async () => {
         </div>
         <p class="text-xs text-slate-500">{{ t('browse.sheetHelp') }}</p>
         <div class="flex gap-3">
-          <a
-            :href="result.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn-secondary flex-1"
-          >
-            {{ t('browse.openOtodom') }} ↗
-          </a>
-          <button
-            type="button"
-            class="btn-primary flex-1"
-            :disabled="inHunt || adding"
-            @click="$emit('add')"
-          >
-            {{ inHunt ? t('browse.added') : adding ? t('browse.adding') : t('browse.add') }}
-          </button>
+          <template v-if="inHunt || adding">
+            <button type="button" class="btn-primary flex-1" disabled>
+              {{ inHunt ? t('browse.added') : t('browse.adding') }}
+            </button>
+          </template>
+          <template v-else>
+            <button type="button" class="btn-secondary flex-1" @click="$emit('add', false)">
+              {{ t('browse.add') }}
+            </button>
+            <button type="button" class="btn-primary flex-1" @click="$emit('add', true)">
+              ♥ {{ t('browse.addLiked') }}
+            </button>
+          </template>
         </div>
+        <a
+          :href="result.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block text-center text-sm font-semibold text-brand-700"
+        >
+          {{ t('browse.openOtodom') }} ↗
+        </a>
       </div>
     </div>
   </div>

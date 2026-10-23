@@ -47,6 +47,8 @@ const bodySchema = z.object({
   photoPaths: z.array(z.string()).max(30).optional(),
   /** Where `parsed` came from: the extension (default) or a Browse result read by search-refresh. */
   via: z.enum(['extension', 'browse']).optional(),
+  /** "Add as liked": also record the adder's yes. */
+  liked: z.boolean().optional(),
 })
 type IngestBody = z.infer<typeof bodySchema>
 
@@ -126,14 +128,12 @@ async function findExisting(ctx: Ctx, canonicalUrl: string) {
   return merged
 }
 
-/** Adding an ad means the member likes it: it counts as their yes, unless they already voted. */
+/** "Add as liked" records the adder's yes; a plain add leaves the listing in their deck. */
 async function likeIt(ctx: Ctx, listingId: string) {
+  if (!ctx.body.liked) return
   const { error } = await ctx.db
     .from('votes')
-    .upsert(
-      { listing_id: listingId, user_id: ctx.userId, swipe: 'yes' },
-      { onConflict: 'listing_id,user_id', ignoreDuplicates: true },
-    )
+    .upsert({ listing_id: listingId, user_id: ctx.userId, swipe: 'yes', stars: null })
   if (error) console.error('ingest: could not record the vote', error.message)
 }
 

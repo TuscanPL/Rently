@@ -25,7 +25,7 @@ The first users are two people renting in Warsaw. The app is multi-user from the
 - **Hunt:** one apartment search, such as "Warsaw flat 2026". A hunt has members, criteria, pins and listings. A user can belong to several hunts.
 - **Member:** a user in a hunt. Roles are `owner` and `member`. People join through an invite link.
 - **Listing:** one apartment saved to a hunt. It is a **snapshot**, so it stays in the app even after the original ad is removed.
-- **Vote:** what one member thinks of one listing: a swipe (`yes`/`maybe`/`no`). Adding a listing counts as the adder's `yes`.
+- **Vote:** what one member thinks of one listing: a swipe (`yes`/`maybe`/`no`). **Add as liked** in Browse also records the adder's `yes`.
 - **Match:** every member has swiped `yes` on the listing.
 - **Pin:** a place the hunt cares about, such as a workplace, a station or a parent's flat. The app shows each listing's distance to every pin.
 
@@ -61,7 +61,7 @@ The first users are two people renting in Warsaw. The app is multi-user from the
 ### Swipe deck
 - A Tinder-style card stack of listings the current user **hasn't voted on yet**. Listings another member has swiped `no` on **stay in the deck**. They carry a clear **"✗ Rejected by {name}"** banner and are sorted after listings nobody has rejected. Each card shows: photo carousel, total monthly cost, m², rooms, district, distance to pins, and badges for criteria it breaks.
 - Swipe right = yes, left = no, up = maybe. Buttons do the same for desktop and accessibility. Undo the last swipe.
-- No star ratings: adding a listing is the adder's yes, so it only shows up in the other members' decks.
+- No star ratings. A plain add puts the listing in everyone's deck; **Add as liked** (Browse) is the adder's yes, so only the others get it.
 - **Realtime:** when a partner's swipe completes a match, show a "It's a match 🏠" toast and push notification.
 
 ### Reconsider

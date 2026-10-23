@@ -624,14 +624,15 @@
     "rentPlusFee": "{rent} + {fee}",
     "listed": "Listed",
     "openOtodom": "Open on Otodom",
-    "sheetHelp": "Adding it to the hunt counts as your yes. Your partner gets it in their deck.",
+    "sheetHelp": "Add to hunt puts it in everyone's deck to check properly. Add as liked counts as your yes, so only your partner gets it in their deck.",
     "footer": "Nothing is fetched in the background: pull down for the newest ads, scroll down for more.",
     "found": "No ads found | Found 1 ad | Found {n} ads",
     "loadMore": "Load more (page {page} of {total})",
     "loadingMore": "Loading the next page…",
     "end": "That's all Otodom has for this search.",
     "loadingAd": "Loading the full ad from Otodom…",
-    "adError": "Couldn't load the full ad ({error}). Showing what the results list has."
+    "adError": "Couldn't load the full ad ({error}). Showing what the results list has.",
+    "addLiked": "Add as liked"
   },
   "searchForm": {
     "mode": {

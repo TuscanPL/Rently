@@ -165,15 +165,15 @@ async function loadMore() {
 const listEl = useTemplateRef<HTMLElement>('listEl')
 const { pull, refreshing, run, threshold } = usePullToRefresh(listEl, refresh)
 
-async function add(result: SearchResult) {
+async function add(result: SearchResult, liked = false) {
   adding.value = new Set([...adding.value, result.external_id])
   error.value = null
   try {
     // The full ad read when the card was opened saves fetching it again.
     await ingest(
       result.detail
-        ? { huntId: huntId.value, url: result.url, parsed: result.detail, via: 'browse' }
-        : { huntId: huntId.value, url: result.url },
+        ? { huntId: huntId.value, url: result.url, parsed: result.detail, via: 'browse', liked }
+        : { huntId: huntId.value, url: result.url, liked },
     )
     await listingsStore.fetchAll()
   } catch (e) {
@@ -442,7 +442,7 @@ onBeforeUnmount(() => {
       :in-hunt="inHunt(open, urls)"
       :adding="adding.has(open.external_id)"
       @close="open = null"
-      @add="add(open!)"
+      @add="(liked) => add(open!, liked)"
       @detail="(detail) => setDetail(open!, detail)"
     />
   </div>

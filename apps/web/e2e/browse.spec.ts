@@ -239,8 +239,16 @@ test('save an Otodom search, look at results, add one, hide one, pull to refresh
     ADS[0]!.url,
   )
   await snap(page, 'browse-sheet')
-  await sheet.getByRole('button', { name: 'Add to hunt' }).click()
+  await expect(sheet.getByRole('button', { name: 'Add to hunt' })).toBeVisible()
+  await sheet.getByRole('button', { name: '♥ Add as liked' }).click()
   await expect(sheet.getByRole('button', { name: 'In hunt' })).toBeDisabled({ timeout: 30_000 })
+  // "Add as liked" is this member's yes.
+  const huntId = page.url().split('/h/')[1]!.split('/')[0]!
+  const { data: liked } = await admin
+    .from('votes')
+    .select('swipe, listings!inner(hunt_id)')
+    .eq('listings.hunt_id', huntId)
+  expect(liked?.map((v) => v.swipe)).toEqual(['yes'])
   await sheet.getByRole('button', { name: 'Close' }).click()
   await expect(cards.first()).toContainText('✓ In hunt')
   // Opening it again uses the stored ad.
